@@ -5,7 +5,7 @@
  * Description: 基于高德地图API的轻量级旅行博客地图插件，支持已去、想去、计划三种旅行状态标记。
  * Version: 1.0.1
  * Author: Mr. T
- * Author URI: https://www.74110.net
+ * Author URI: https://www.74110.net/recommendation/wordpress-travel-map/
  * Text Domain: travel-map
  * Domain Path: /languages
  * Requires at least: 5.0
