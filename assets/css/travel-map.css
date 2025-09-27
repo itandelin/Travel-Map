@@ -1,0 +1,2070 @@
+/**
+ * Travel Map Frontend Styles
+ * 前端地图样式
+ */
+
+/* 全局链接样式 - 强制不显示下划线 */
+.travel-map-container a,
+.travel-map-container a:link,
+.travel-map-container a:visited,
+.travel-map-container a:hover,
+.travel-map-container a:active {
+    text-decoration: none !important;
+}
+
+/* 深色模式适配 */
+html.dark .travel-map-container {
+    background: #1f2937;
+    color: #f3f4f6;
+}
+
+html.dark .travel-map-filters {
+    background: #374151;
+    border-bottom-color: #4b5563;
+}
+
+html.dark .travel-map-embedded-filters {
+    background: rgba(55, 65, 81, 0.95);
+    border-color: rgba(75, 85, 99, 0.3);
+}
+
+html.dark .travel-map-filter-tab {
+    background: #374151;
+    border-color: #4b5563;
+    color: #d1d5db;
+}
+
+html.dark .travel-map-filter-tab:hover {
+    background: #4b5563;
+    border-color: #6b7280;
+    color: #f3f4f6;
+}
+
+html.dark .travel-map-control-btn {
+    background: #374151;
+    border-color: #4b5563;
+    color: #f3f4f6;
+}
+
+html.dark .travel-map-control-btn:hover {
+    background: #4b5563;
+}
+
+html.dark .travel-map-control-btn svg {
+    color: #f3f4f6;
+}
+
+html.dark .travel-map-loading {
+    background: #1f2937;
+    color: #f3f4f6;
+}
+
+html.dark .travel-map-loading-text {
+    color: #d1d5db;
+}
+
+html.dark .travel-map-error {
+    background: #7f1d1d;
+    border-color: #dc2626;
+    color: #fecaca;
+}
+
+html.dark .travel-map-error-details {
+    background: #991b1b;
+    border-color: #dc2626;
+}
+
+html.dark .travel-map-popup {
+    background: rgba(31, 41, 55, 0.8);
+}
+
+html.dark .travel-map-popup-content {
+    background: #374151;
+    border-color: #4b5563;
+    color: #f3f4f6;
+}
+
+html.dark .travel-map-popup-close {
+    background: #4b5563;
+    color: #f3f4f6;
+}
+
+html.dark .travel-map-popup-close:hover {
+    background: #6b7280;
+}
+
+/* auto模式 - 跟随系统主题 */
+html.auto .travel-map-container {
+    background: #f5f5f5;
+    color: #374151;
+}
+
+@media (prefers-color-scheme: dark) {
+    html.auto .travel-map-container {
+        background: #1f2937;
+        color: #f3f4f6;
+    }
+    
+    html.auto .travel-map-filters {
+        background: #374151;
+        border-bottom-color: #4b5563;
+    }
+    
+    html.auto .travel-map-embedded-filters {
+        background: rgba(55, 65, 81, 0.95);
+        border-color: rgba(75, 85, 99, 0.3);
+    }
+    
+    html.auto .travel-map-filter-tab {
+        background: #374151;
+        border-color: #4b5563;
+        color: #d1d5db;
+    }
+    
+    html.auto .travel-map-filter-tab:hover {
+        background: #4b5563;
+        border-color: #6b7280;
+        color: #f3f4f6;
+    }
+    
+    html.auto .travel-map-control-btn {
+        background: #374151;
+        border-color: #4b5563;
+        color: #f3f4f6;
+    }
+    
+    html.auto .travel-map-control-btn:hover {
+        background: #4b5563;
+    }
+    
+    html.auto .travel-map-control-btn svg {
+        color: #f3f4f6;
+    }
+    
+    html.auto .travel-map-loading {
+        background: #1f2937;
+        color: #f3f4f6;
+    }
+    
+    html.auto .travel-map-loading-text {
+        color: #d1d5db;
+    }
+    
+    html.auto .travel-map-error {
+        background: #7f1d1d;
+        border-color: #dc2626;
+        color: #fecaca;
+    }
+    
+    html.auto .travel-map-error-details {
+        background: #991b1b;
+        border-color: #dc2626;
+    }
+    
+    html.auto .travel-map-popup {
+        background: rgba(31, 41, 55, 0.8);
+    }
+    
+    html.auto .travel-map-popup-content {
+        background: #374151;
+        border-color: #4b5563;
+        color: #f3f4f6;
+    }
+    
+    html.auto .travel-map-popup-close {
+        background: #4b5563;
+        color: #f3f4f6;
+    }
+    
+    html.auto .travel-map-popup-close:hover {
+        background: #6b7280;
+    }
+}
+
+/* 地图容器样式 */
+.travel-map-container {
+    width: 100%;
+    position: relative;
+    background: #f5f5f5;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    /* 强化防护机制 - 防止主题图片浏览器 */
+    isolation: isolate;
+    contain: layout style;
+    pointer-events: auto;
+    z-index: 1;
+}
+
+/* 强化防护机制 - 防止主题图片浏览器 */
+.travel-map-container * {
+    /* 防止主题脚本识别图片元素 */
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+.travel-map-container img {
+    pointer-events: none !important;
+    -webkit-user-drag: none !important;
+    -khtml-user-drag: none !important;
+    -moz-user-drag: none !important;
+    -o-user-drag: none !important;
+    user-drag: none !important;
+    /* 移除可能被主题识别的属性 */
+    cursor: default !important;
+}
+
+/* 特别防护弹窗内的图片 */
+.travel-map-custom-popup img {
+    pointer-events: none !important;
+    user-select: none !important;
+    cursor: default !important;
+    /* 防止主题图片浏览器脚本识别 */
+    -webkit-touch-callout: none !important;
+    -webkit-user-select: none !important;
+    -khtml-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+    user-select: none !important;
+}
+
+/* 确保弹窗元素不被主题脚本影响 */
+.travel-map-custom-popup {
+    isolation: isolate !important;
+    contain: layout style !important;
+    pointer-events: auto !important;
+    z-index: 9999 !important;
+}
+
+/* 增强的标记点样式 */
+.travel-marker-with-image {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.travel-marker-with-image:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4) !important;
+    z-index: 1000;
+}
+
+/* 悬停预览样式 */
+.travel-map-hover-preview {
+    position: fixed;
+    z-index: 9999;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    pointer-events: none;
+}
+
+.travel-map-hover-preview.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.hover-preview-content {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    overflow: hidden;
+    width: 120px;
+}
+
+.hover-preview-content img {
+    width: 100%;
+    height: 80px;
+    object-fit: cover;
+    display: block;
+}
+
+.hover-preview-title {
+    padding: 8px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #333;
+    text-align: center;
+    background: white;
+}
+
+/* 重新设计的弹窗样式（参考图风格） */
+.travel-map-enhanced-popup {
+    position: absolute;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    min-width: 200px;
+    max-width: 240px;
+    z-index: 10001;
+    transform: scale(0.9);
+    opacity: 0;
+    transition: all 0.2s ease;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    pointer-events: auto;
+    isolation: isolate;
+    contain: layout style;
+    /* 移除 overflow: hidden 以显示箭头 */
+}
+
+/* 顶部特色图片 */
+.travel-map-enhanced-popup .popup-header-image {
+    width: 100%;
+    height: 120px;
+    overflow: hidden;
+    border-radius: 12px 12px 0 0;
+    position: relative;
+}
+
+.travel-map-enhanced-popup .popup-header-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* 地点头部信息 */
+.travel-map-enhanced-popup .popup-location-header {
+    padding: 8px 12px 6px 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.travel-map-enhanced-popup .location-flag {
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.travel-map-enhanced-popup .location-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+    line-height: 1.1;
+}
+
+/* 文章列表 */
+.travel-map-enhanced-popup .popup-articles-list {
+    padding: 0 12px 12px 12px;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.travel-map-enhanced-popup .popup-article-item {
+    padding: 4px 0;
+    cursor: pointer;
+    transition: color 0.2s ease;
+    font-size: 12px;
+    color: #333;
+    line-height: 1.2;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.travel-map-enhanced-popup .popup-article-item:last-child {
+    border-bottom: none;
+}
+
+.travel-map-enhanced-popup .popup-article-item:hover {
+    color: #007cba;
+}
+
+/* 关闭按钮 */
+.travel-map-enhanced-popup .travel-map-popup-close {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    background: rgba(255,255,255,0.9);
+    color: #666;
+    border: none;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    z-index: 10002;
+    line-height: 1;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.travel-map-enhanced-popup .travel-map-popup-close:hover {
+    background: rgba(255,255,255,1);
+    color: #333;
+}
+
+/* 箭头 - 提高特异性确保优先显示 */
+.travel-map-enhanced-popup.travel-map-custom-popup::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-top: 8px solid #ffffff;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+}
+
+.travel-map-enhanced-popup.travel-map-custom-popup.popup-below::after {
+    top: -8px;
+    border-top: none;
+    border-bottom: 8px solid #ffffff;
+}
+
+.travel-map-enhanced-popup.show {
+    transform: scale(1);
+    opacity: 1;
+}
+
+/* 深色模式适配 */
+html.dark .travel-map-enhanced-popup {
+    background: #2d3748;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+
+html.dark .travel-map-enhanced-popup .popup-location-header {
+    color: #f7fafc;
+}
+
+html.dark .travel-map-enhanced-popup .location-name {
+    color: #f7fafc;
+}
+
+html.dark .travel-map-enhanced-popup .popup-article-item {
+    color: #e2e8f0;
+    border-bottom-color: #4a5568;
+}
+
+html.dark .travel-map-enhanced-popup .popup-article-item:hover {
+    color: #63b3ed;
+}
+
+html.dark .travel-map-enhanced-popup .travel-map-popup-close {
+    background: rgba(45, 55, 72, 0.9);
+    color: #e2e8f0;
+}
+
+html.dark .travel-map-enhanced-popup .travel-map-popup-close:hover {
+    background: rgba(45, 55, 72, 1);
+    color: #f7fafc;
+}
+
+html.dark .travel-map-enhanced-popup.travel-map-custom-popup::after {
+    border-top-color: #2d3748;
+}
+
+html.dark .travel-map-enhanced-popup.travel-map-custom-popup.popup-below::after {
+    border-bottom-color: #2d3748;
+}
+
+/* 浅色模式适配 */
+html.light .travel-map-enhanced-popup {
+    background: #ffffff;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+}
+
+html.light .travel-map-enhanced-popup .popup-location-header {
+    color: #333;
+}
+
+html.light .travel-map-enhanced-popup .location-name {
+    color: #333;
+}
+
+html.light .travel-map-enhanced-popup .popup-article-item {
+    color: #333;
+    border-bottom-color: #f0f0f0;
+}
+
+html.light .travel-map-enhanced-popup .popup-article-item:hover {
+    color: #007cba;
+}
+
+html.light .travel-map-enhanced-popup .travel-map-popup-close {
+    background: rgba(255,255,255,0.9);
+    color: #666;
+}
+
+html.light .travel-map-enhanced-popup .travel-map-popup-close:hover {
+    background: rgba(255,255,255,1);
+    color: #333;
+}
+
+html.light .travel-map-enhanced-popup.travel-map-custom-popup::after {
+    border-top-color: #ffffff;
+}
+
+html.light .travel-map-enhanced-popup.travel-map-custom-popup.popup-below::after {
+    border-bottom-color: #ffffff;
+}
+
+/* auto模式 - 跟随系统主题 */
+html.auto .travel-map-enhanced-popup {
+    background: #ffffff;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+}
+
+html.auto .travel-map-enhanced-popup .popup-location-header {
+    color: #333;
+}
+
+html.auto .travel-map-enhanced-popup .location-name {
+    color: #333;
+}
+
+html.auto .travel-map-enhanced-popup .popup-article-item {
+    color: #333;
+    border-bottom-color: #f0f0f0;
+}
+
+html.auto .travel-map-enhanced-popup .popup-article-item:hover {
+    color: #007cba;
+}
+
+html.auto .travel-map-enhanced-popup .travel-map-popup-close {
+    background: rgba(255,255,255,0.9);
+    color: #666;
+}
+
+html.auto .travel-map-enhanced-popup .travel-map-popup-close:hover {
+    background: rgba(255,255,255,1);
+    color: #333;
+}
+
+html.auto .travel-map-enhanced-popup.travel-map-custom-popup::after {
+    border-top-color: #ffffff;
+}
+
+html.auto .travel-map-enhanced-popup.travel-map-custom-popup.popup-below::after {
+    border-bottom-color: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+    html.auto .travel-map-enhanced-popup {
+        background: #2d3748;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+    
+    html.auto .travel-map-enhanced-popup .popup-location-header {
+        color: #f7fafc;
+    }
+    
+    html.auto .travel-map-enhanced-popup .location-name {
+        color: #f7fafc;
+    }
+    
+    html.auto .travel-map-enhanced-popup .popup-article-item {
+        color: #e2e8f0;
+        border-bottom-color: #4a5568;
+    }
+    
+    html.auto .travel-map-enhanced-popup .popup-article-item:hover {
+        color: #63b3ed;
+    }
+    
+    html.auto .travel-map-enhanced-popup .travel-map-popup-close {
+        background: rgba(45, 55, 72, 0.9);
+        color: #e2e8f0;
+    }
+    
+    html.auto .travel-map-enhanced-popup .travel-map-popup-close:hover {
+        background: rgba(45, 55, 72, 1);
+        color: #f7fafc;
+    }
+    
+    html.auto .travel-map-enhanced-popup.travel-map-custom-popup::after {
+        border-top-color: #2d3748;
+    }
+    
+    html.auto .travel-map-enhanced-popup.travel-map-custom-popup.popup-below::after {
+        border-bottom-color: #2d3748;
+    }
+}
+
+.travel-map-custom-popup * {
+    /* 重置所有子元素的样式，防止主题干扰 */
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    border: none;
+    outline: none;
+    text-decoration: none;
+    list-style: none;
+    background: none;
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    line-height: inherit;
+    color: inherit;
+}
+
+.travel-map-custom-popup img {
+    /* 特别防止图片被主题的图片浏览器捕获 */
+    pointer-events: none !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+    cursor: default !important;
+}
+
+.travel-map-custom-popup.show {
+    transform: scale(1);
+    opacity: 1;
+}
+
+.travel-map-custom-popup .travel-map-popup-close {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    background: rgba(255,255,255,0.9);
+    color: #666;
+    border: 1px solid #ddd;
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    font-size: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    z-index: 10002;
+    line-height: 1;
+}
+
+.travel-map-custom-popup .travel-map-popup-close:hover {
+    background: #f0f0f0;
+    border-color: #ccc;
+    color: #333;
+}
+
+.travel-map-custom-popup .popup-location {
+    padding: 6px 10px 4px 10px;
+    border-bottom: 1px solid #e8e8e8;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: #fafafa;
+    border-radius: 8px 8px 0 0;
+}
+
+.travel-map-custom-popup .location-flag {
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+.travel-map-custom-popup .location-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+    line-height: 1.1;
+}
+
+.travel-map-custom-popup .popup-articles {
+    padding: 4px 8px 6px 8px;
+    max-height: 120px;
+    overflow-y: auto;
+}
+
+.travel-map-custom-popup .popup-article {
+    padding: 2px 4px;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    margin-bottom: 2px;
+    border: none;
+}
+
+.travel-map-custom-popup .popup-article:hover {
+    background: #f0f0f0;
+}
+
+.travel-map-custom-popup .popup-article .article-title {
+    font-size: 11px;
+    font-weight: 500;
+    color: #222;
+    margin: 0;
+    line-height: 1.1;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.travel-map-custom-popup .popup-article .article-date {
+    font-size: 9px;
+    color: #999;
+    margin: 0;
+    margin-top: 1px;
+}
+
+/* 简洁弹窗信息样式 */
+.travel-map-custom-popup .popup-article-info {
+    padding: 0;
+}
+
+.travel-map-custom-popup .info-text {
+    font-size: 10px;
+    color: #666;
+    line-height: 1.2;
+    margin: 0;
+}
+
+/* 新增的信息项样式 */
+.travel-map-custom-popup .info-item {
+    font-size: 10px;
+    color: #666;
+    line-height: 1.3;
+    margin: 0 0 3px 0;
+    padding: 2px 0;
+}
+
+.travel-map-custom-popup .info-item:last-child {
+    margin-bottom: 0;
+}
+
+.travel-map-custom-popup .info-item.wish-reason {
+    color: #1e40af;
+    font-weight: 500;
+}
+
+.travel-map-custom-popup .info-item.description {
+    color: #374151;
+}
+
+/* 为自定义弹窗添加箭头 */
+.travel-map-custom-popup::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 5px solid #ffffff;
+    filter: drop-shadow(0 1px 1px rgba(0,0,0,0.1));
+}
+
+/* 当弹窗在标记点下方时 */
+.travel-map-custom-popup.popup-below::after {
+    top: -5px;
+    border-top: none;
+    border-bottom: 5px solid #ffffff;
+}
+
+/* 弹窗箭头 */
+.popup-arrow {
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-top: 8px solid white;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+}
+
+/* 当弹窗在标记点下方时，箭头应该指向上方 */
+.travel-map-enhanced-popup.popup-below .popup-arrow {
+    bottom: auto;
+    top: -8px;
+    border-top: none;
+    border-bottom: 8px solid white;
+}
+
+/* 弹窗头部 */
+.popup-header {
+    position: relative;
+    padding: 4px;
+}
+
+.travel-map-enhanced-popup .travel-map-popup-close {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(0,0,0,0.5);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease;
+    z-index: 10;
+}
+
+.travel-map-enhanced-popup .travel-map-popup-close:hover {
+    background: rgba(0,0,0,0.7);
+}
+
+/* 地点信息区域 - 简化 */
+.location-section {
+    padding: 8px 0 12px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.location-image {
+    display: none; /* 隐藏大图片 */
+}
+
+.location-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+
+
+.location-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+}
+
+.location-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.status-badge {
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.status-visited {
+    background: #fed7aa;
+    color: #9a3412;
+}
+
+.visit-year {
+    color: #666;
+    font-size: 12px;
+}
+
+/* 文章区域 - 简化 */
+.articles-section {
+    padding: 8px 0;
+}
+
+.articles-header {
+    display: none; /* 隐藏文章头部导航 */
+}
+
+.articles-count {
+    font-size: 12px;
+    font-weight: 500;
+    color: #666;
+}
+
+.articles-nav {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.nav-btn {
+    background: #f3f4f6;
+    border: none;
+    border-radius: 3px;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 10px;
+    transition: background 0.2s ease;
+}
+
+.nav-btn:hover {
+    background: #e5e7eb;
+}
+
+.nav-indicator {
+    font-size: 10px;
+    color: #666;
+    min-width: 25px;
+    text-align: center;
+}
+
+/* 当前文章 - 只显示标题 */
+.current-article {
+    margin-bottom: 6px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.current-article .article-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: #333;
+    margin: 0 0 4px 0;
+    line-height: 1.3;
+}
+
+.current-article .article-date {
+    font-size: 10px;
+    color: #999;
+    margin: 0;
+}
+
+.current-article .article-excerpt {
+    display: none; /* 隐藏摘要 */
+}
+
+.article-actions {
+    display: none; /* 隐藏操作按钮区域 */
+}
+
+.article-date {
+    font-size: 11px;
+    color: #999;
+}
+
+.read-more-btn {
+    background: #3b82f6;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    text-decoration: none;
+    font-size: 11px;
+    transition: background 0.2s ease;
+}
+
+.read-more-btn:hover {
+    background: #2563eb;
+    text-decoration: none;
+}
+
+/* 其他文章列表 - 只显示标题 */
+.other-articles {
+    border-top: 1px solid #eee;
+    padding-top: 6px;
+}
+
+.other-articles-title {
+    display: none; /* 隐藏“其他文章”标题 */
+}
+
+.articles-list {
+    max-height: 100px;
+    overflow-y: auto;
+}
+
+.article-item {
+    display: flex;
+    align-items: center;
+    padding: 2px 4px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    margin-bottom: 1px;
+}
+
+.article-item:hover {
+    background: #f9fafb;
+}
+
+.article-thumb {
+    display: none; /* 隐藏缩略图 */
+}
+
+.article-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.article-item .article-title {
+    font-size: 11px;
+    font-weight: 400;
+    color: #333;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.article-item .article-date {
+    display: none; /* 隐藏日期 */
+}
+
+/* 筛选标签栏 */
+.travel-map-filters {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #fff;
+    padding: 12px 16px;
+    border-bottom: 1px solid #e5e7eb;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+/* 嵌入式筛选标签 - 浮动在地图上方 */
+.travel-map-embedded-filters {
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1001; /* 确保在地图之上 */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px); /* Safari 兼容 */
+    padding: 8px 12px;
+    border-radius: 20px;
+    flex-wrap: wrap;
+    gap: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    pointer-events: auto; /* 确保可以点击 */
+    visibility: visible; /* 确保可见 */
+    opacity: 1; /* 确保不透明 */
+    min-width: 200px; /* 最小宽度 */
+}
+
+.travel-map-filter-tab {
+    padding: 6px 14px;
+    border: 1px solid #e5e7eb;
+    border-radius: 20px;
+    background: #fff;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 12px;
+    font-weight: 500;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    line-height: 1;
+}
+
+.travel-map-filter-tab:hover {
+    background: #f9fafb;
+    border-color: #d1d5db;
+    color: #374151;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.travel-map-filter-tab.active {
+    color: #fff;
+    border-color: transparent;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    transform: translateY(-1px);
+}
+
+.travel-map-filter-tab.active.all {
+    background: linear-gradient(135deg, #6b7280, #4b5563);
+}
+
+.travel-map-filter-tab.active.visited {
+    background: linear-gradient(135deg, #ff6b35, #e55a2b);
+}
+
+.travel-map-filter-tab.active.want_to_go {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+}
+
+.travel-map-filter-tab.active.planned {
+    background: linear-gradient(135deg, #10b981, #059669);
+}
+
+/* 地图主体 */
+.travel-map-wrapper {
+    position: relative;
+    width: 100%;
+    min-height: 400px;
+    height: 100%;
+    overflow: hidden; /* 防止子元素溢出 */
+}
+
+.travel-map {
+    width: 100%;
+    height: 100%;
+    min-height: 400px;
+    position: relative;
+    background: #f5f5f5;
+}
+
+/* 地图控制按钮 */
+.travel-map-controls {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.travel-map-control-btn {
+    width: 40px;
+    height: 40px;
+    background: #fff;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.travel-map-control-btn:hover {
+    background: #f9fafb;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.travel-map-control-btn svg {
+    width: 20px;
+    height: 20px;
+    color: #374151;
+}
+
+/* 加载状态 */
+.travel-map-loading {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #f5f5f5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    z-index: 1000;
+}
+
+.travel-map-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid #e5e7eb;
+    border-top: 3px solid #3b82f6;
+    border-radius: 50%;
+    animation: travel-map-spin 1s linear infinite;
+}
+
+@keyframes travel-map-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.travel-map-loading-text {
+    margin-top: 12px;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+/* 错误状态 */
+.travel-map-error {
+    padding: 40px 24px;
+    background: #fef2f2;
+    color: #dc2626;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 14px;
+    border: 1px solid #fecaca;
+}
+
+.travel-map-error-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    display: block;
+}
+
+.travel-map-error-message {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: #dc2626;
+}
+
+.travel-map-error-details {
+    background: #fff;
+    padding: 16px;
+    border-radius: 6px;
+    margin-top: 16px;
+    text-align: left;
+    border: 1px solid #fecaca;
+}
+
+.travel-map-error-details p {
+    margin: 0 0 8px 0;
+    font-weight: 600;
+    color: #991b1b;
+}
+
+.travel-map-error-details ul {
+    margin: 8px 0 16px 20px;
+    color: #7f1d1d;
+}
+
+.travel-map-error-details li {
+    margin-bottom: 4px;
+}
+
+.travel-map-retry-btn {
+    background: #dc2626;
+    color: #fff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: background 0.2s;
+}
+
+.travel-map-retry-btn:hover {
+    background: #b91c1c;
+}
+
+/* 信息弹窗 */
+.travel-map-popup {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.travel-map-popup.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.travel-map-popup-content {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    max-width: 400px;
+    width: 90%;
+    max-height: 80vh;
+    overflow: hidden;
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+}
+
+.travel-map-popup.show .travel-map-popup-content {
+    transform: scale(1);
+}
+
+.travel-map-popup-header {
+    position: relative;
+    padding: 0;
+}
+
+.travel-map-popup-image {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    background: linear-gradient(45deg, #f0f0f0, #e0e0e0);
+}
+
+.travel-map-popup-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 32px;
+    height: 32px;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    transition: background 0.2s ease;
+}
+
+.travel-map-popup-close:hover {
+    background: rgba(0, 0, 0, 0.8);
+}
+
+.travel-map-popup-body {
+    padding: 16px;
+}
+
+.travel-map-popup-location {
+    display: flex;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+
+
+.travel-map-popup-place {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.travel-map-popup-title {
+    font-size: 16px;
+    font-weight: 500;
+    color: #111827;
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+
+.travel-map-popup-year {
+    display: inline-block;
+    background: #f3f4f6;
+    color: #6b7280;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    margin-bottom: 8px;
+}
+
+.travel-map-popup-excerpt {
+    color: #6b7280;
+    font-size: 14px;
+    line-height: 1.5;
+    margin-bottom: 16px;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.travel-map-popup-actions {
+    padding: 16px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.travel-map-popup-btn {
+    width: 100%;
+    background: #3b82f6;
+    color: #fff;
+    border: none;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.travel-map-popup-btn:hover {
+    background: #2563eb;
+}
+
+/* 信息弹窗的主题模式适配 */
+/* 浅色模式 */
+html.light .travel-map-popup {
+    background: rgba(0, 0, 0, 0.6);
+}
+
+html.light .travel-map-popup-content {
+    background: #fff;
+    border-color: #e5e7eb;
+    color: #374151;
+}
+
+html.light .travel-map-popup-close {
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+}
+
+html.light .travel-map-popup-close:hover {
+    background: rgba(0, 0, 0, 0.8);
+}
+
+html.light .travel-map-popup-place {
+    color: #1f2937;
+}
+
+html.light .travel-map-popup-title {
+    color: #111827;
+}
+
+html.light .travel-map-popup-year {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+html.light .travel-map-popup-excerpt {
+    color: #6b7280;
+}
+
+html.light .travel-map-popup-actions {
+    border-top-color: #e5e7eb;
+}
+
+html.light .travel-map-popup-btn {
+    background: #3b82f6;
+    color: #fff;
+}
+
+html.light .travel-map-popup-btn:hover {
+    background: #2563eb;
+}
+
+/* 简洁弹窗样式（用于计划和想去状态） */
+.travel-map-simple-popup {
+    position: absolute;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border: 1px solid #e5e7eb;
+    padding: 12px 16px;
+    min-width: 180px;
+    max-width: 250px;
+    z-index: 1000;
+    transform: scale(0.9);
+    opacity: 0;
+    transition: all 0.2s ease;
+    /* CSS隔离保护策略 */
+    isolation: isolate;
+    contain: layout style;
+}
+
+.travel-map-simple-popup.show {
+    transform: scale(1);
+    opacity: 1;
+}
+
+.travel-map-simple-popup::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 6px solid #fff;
+}
+
+/* 当简洁弹窗在标记点下方时 */
+.travel-map-simple-popup.popup-below::after {
+    top: -6px;
+    border-top: none;
+    border-bottom: 6px solid #fff;
+}
+
+.travel-map-simple-popup-close {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 18px;
+    height: 18px;
+    background: none;
+    border: none;
+    color: #9ca3af;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.travel-map-simple-popup-close:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: #6b7280;
+}
+
+.travel-map-simple-popup-content {
+    padding-right: 20px;
+}
+
+.travel-map-simple-popup-place {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 3px;
+    line-height: 1.3;
+}
+
+.travel-map-simple-popup-info {
+    font-size: 12px;
+    color: #6b7280;
+    line-height: 1.4;
+}
+
+.travel-map-simple-popup-info .info-item {
+    margin-bottom: 3px;
+}
+
+.travel-map-simple-popup-info .info-item:last-child {
+    margin-bottom: 0;
+}
+
+/* 简洁弹窗的主题模式适配 */
+/* 深色模式 */
+html.dark .travel-map-simple-popup {
+    background: #374151;
+    border-color: #4b5563;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+html.dark .travel-map-simple-popup::after {
+    border-top-color: #374151;
+}
+
+html.dark .travel-map-simple-popup.popup-below::after {
+    border-bottom-color: #374151;
+}
+
+html.dark .travel-map-simple-popup-close {
+    color: #d1d5db;
+}
+
+html.dark .travel-map-simple-popup-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #f3f4f6;
+}
+
+html.dark .travel-map-simple-popup-place {
+    color: #f3f4f6;
+}
+
+html.dark .travel-map-simple-popup-info {
+    color: #d1d5db;
+}
+
+/* 浅色模式 */
+html.light .travel-map-simple-popup {
+    background: #fff;
+    border-color: #e5e7eb;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+html.light .travel-map-simple-popup::after {
+    border-top-color: #fff;
+}
+
+html.light .travel-map-simple-popup.popup-below::after {
+    border-bottom-color: #fff;
+}
+
+html.light .travel-map-simple-popup-close {
+    color: #9ca3af;
+}
+
+html.light .travel-map-simple-popup-close:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: #6b7280;
+}
+
+html.light .travel-map-simple-popup-place {
+    color: #1f2937;
+}
+
+html.light .travel-map-simple-popup-info {
+    color: #6b7280;
+}
+
+/* auto模式 - 跟随系统主题 */
+html.auto .travel-map-simple-popup {
+    background: #fff;
+    border-color: #e5e7eb;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+html.auto .travel-map-simple-popup::after {
+    border-top-color: #fff;
+}
+
+html.auto .travel-map-simple-popup.popup-below::after {
+    border-bottom-color: #fff;
+}
+
+html.auto .travel-map-simple-popup-close {
+    color: #9ca3af;
+}
+
+html.auto .travel-map-simple-popup-close:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: #6b7280;
+}
+
+html.auto .travel-map-simple-popup-place {
+    color: #1f2937;
+}
+
+html.auto .travel-map-simple-popup-info {
+    color: #6b7280;
+}
+
+@media (prefers-color-scheme: dark) {
+    html.auto .travel-map-simple-popup {
+        background: #374151;
+        border-color: #4b5563;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+    
+    html.auto .travel-map-simple-popup::after {
+        border-top-color: #374151;
+    }
+    
+    html.auto .travel-map-simple-popup.popup-below::after {
+        border-bottom-color: #374151;
+    }
+    
+    html.auto .travel-map-simple-popup-close {
+        color: #d1d5db;
+    }
+    
+    html.auto .travel-map-simple-popup-close:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: #f3f4f6;
+    }
+    
+    html.auto .travel-map-simple-popup-place {
+        color: #f3f4f6;
+    }
+    
+    html.auto .travel-map-simple-popup-info {
+        color: #d1d5db;
+    }
+}
+
+/* 自定义弹窗的主题模式适配 */
+/* 深色模式 */
+html.dark .travel-map-custom-popup {
+    background: #374151 !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+html.dark .travel-map-custom-popup::after {
+    border-top-color: #374151 !important;
+}
+
+html.dark .travel-map-custom-popup.popup-below::after {
+    border-bottom-color: #374151 !important;
+}
+
+html.dark .travel-map-custom-popup .travel-map-popup-close {
+    background: rgba(55, 65, 81, 0.9) !important;
+    color: #e2e8f0 !important;
+    border-color: #4b5563 !important;
+}
+
+html.dark .travel-map-custom-popup .travel-map-popup-close:hover {
+    background: #4b5563 !important;
+    border-color: #6b7280 !important;
+    color: #f3f4f6 !important;
+}
+
+html.dark .travel-map-custom-popup .popup-location {
+    background: #4b5563 !important;
+    border-bottom-color: #6b7280 !important;
+}
+
+html.dark .travel-map-custom-popup .location-name {
+    color: #f3f4f6 !important;
+}
+
+html.dark .travel-map-custom-popup .popup-article {
+    color: #e2e8f0 !important;
+}
+
+html.dark .travel-map-custom-popup .popup-article:hover {
+    background: #4b5563 !important;
+}
+
+html.dark .travel-map-custom-popup .popup-article .article-title {
+    color: #e2e8f0 !important;
+}
+
+html.dark .travel-map-custom-popup .popup-article .article-date {
+    color: #9ca3af !important;
+}
+
+html.dark .travel-map-custom-popup .info-text {
+    color: #d1d5db !important;
+}
+
+/* 深色模式下的信息项样式 */
+html.dark .travel-map-custom-popup .info-item {
+    color: #d1d5db !important;
+}
+
+html.dark .travel-map-custom-popup .info-item.wish-reason {
+    color: #60a5fa !important;
+}
+
+html.dark .travel-map-custom-popup .info-item.description {
+    color: #e5e7eb !important;
+}
+
+/* 浅色模式 */
+html.light .travel-map-custom-popup {
+    background: #ffffff !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+html.light .travel-map-custom-popup::after {
+    border-top-color: #ffffff !important;
+}
+
+html.light .travel-map-custom-popup.popup-below::after {
+    border-bottom-color: #ffffff !important;
+}
+
+html.light .travel-map-custom-popup .travel-map-popup-close {
+    background: rgba(255,255,255,0.9) !important;
+    color: #666 !important;
+    border-color: #ddd !important;
+}
+
+html.light .travel-map-custom-popup .travel-map-popup-close:hover {
+    background: #f0f0f0 !important;
+    border-color: #ccc !important;
+    color: #333 !important;
+}
+
+html.light .travel-map-custom-popup .popup-location {
+    background: #fafafa !important;
+    border-bottom-color: #e8e8e8 !important;
+}
+
+html.light .travel-map-custom-popup .location-name {
+    color: #333 !important;
+}
+
+html.light .travel-map-custom-popup .popup-article {
+    color: #333 !important;
+}
+
+html.light .travel-map-custom-popup .popup-article:hover {
+    background: #f0f0f0 !important;
+}
+
+html.light .travel-map-custom-popup .popup-article .article-title {
+    color: #222 !important;
+}
+
+html.light .travel-map-custom-popup .popup-article .article-date {
+    color: #999 !important;
+}
+
+html.light .travel-map-custom-popup .info-text {
+    color: #666 !important;
+}
+
+/* 浅色模式下的信息项样式 */
+html.light .travel-map-custom-popup .info-item {
+    color: #666 !important;
+}
+
+html.light .travel-map-custom-popup .info-item.wish-reason {
+    color: #1e40af !important;
+}
+
+html.light .travel-map-custom-popup .info-item.description {
+    color: #374151 !important;
+}
+
+/* auto模式 - 跟随系统主题 */
+html.auto .travel-map-custom-popup {
+    background: #ffffff !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+html.auto .travel-map-custom-popup::after {
+    border-top-color: #ffffff !important;
+}
+
+html.auto .travel-map-custom-popup.popup-below::after {
+    border-bottom-color: #ffffff !important;
+}
+
+html.auto .travel-map-custom-popup .travel-map-popup-close {
+    background: rgba(255,255,255,0.9) !important;
+    color: #666 !important;
+    border-color: #ddd !important;
+}
+
+html.auto .travel-map-custom-popup .travel-map-popup-close:hover {
+    background: #f0f0f0 !important;
+    border-color: #ccc !important;
+    color: #333 !important;
+}
+
+html.auto .travel-map-custom-popup .popup-location {
+    background: #fafafa !important;
+    border-bottom-color: #e8e8e8 !important;
+}
+
+html.auto .travel-map-custom-popup .location-name {
+    color: #333 !important;
+}
+
+html.auto .travel-map-custom-popup .popup-article {
+    color: #333 !important;
+}
+
+html.auto .travel-map-custom-popup .popup-article:hover {
+    background: #f0f0f0 !important;
+}
+
+html.auto .travel-map-custom-popup .popup-article .article-title {
+    color: #222 !important;
+}
+
+html.auto .travel-map-custom-popup .popup-article .article-date {
+    color: #999 !important;
+}
+
+html.auto .travel-map-custom-popup .info-text {
+    color: #666 !important;
+}
+
+/* auto模式浅色下的信息项样式 */
+html.auto .travel-map-custom-popup .info-item {
+    color: #666 !important;
+}
+
+html.auto .travel-map-custom-popup .info-item.wish-reason {
+    color: #1e40af !important;
+}
+
+html.auto .travel-map-custom-popup .info-item.description {
+    color: #374151 !important;
+}
+
+@media (prefers-color-scheme: dark) {
+    html.auto .travel-map-custom-popup {
+        background: #374151 !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+    
+    html.auto .travel-map-custom-popup::after {
+        border-top-color: #374151 !important;
+    }
+    
+    html.auto .travel-map-custom-popup.popup-below::after {
+        border-bottom-color: #374151 !important;
+    }
+    
+    html.auto .travel-map-custom-popup .travel-map-popup-close {
+        background: rgba(55, 65, 81, 0.9) !important;
+        color: #e2e8f0 !important;
+        border-color: #4b5563 !important;
+    }
+    
+    html.auto .travel-map-custom-popup .travel-map-popup-close:hover {
+        background: #4b5563 !important;
+        border-color: #6b7280 !important;
+        color: #f3f4f6 !important;
+    }
+    
+    html.auto .travel-map-custom-popup .popup-location {
+        background: #4b5563 !important;
+        border-bottom-color: #6b7280 !important;
+    }
+    
+    html.auto .travel-map-custom-popup .location-name {
+        color: #f3f4f6 !important;
+    }
+    
+    html.auto .travel-map-custom-popup .popup-article {
+        color: #e2e8f0 !important;
+    }
+    
+    html.auto .travel-map-custom-popup .popup-article:hover {
+        background: #4b5563 !important;
+    }
+    
+    html.auto .travel-map-custom-popup .popup-article .article-title {
+        color: #e2e8f0 !important;
+    }
+    
+    html.auto .travel-map-custom-popup .popup-article .article-date {
+        color: #9ca3af !important;
+    }
+    
+    html.auto .travel-map-custom-popup .info-text {
+        color: #d1d5db !important;
+    }
+    
+    /* auto模式深色下的信息项样式 */
+    html.auto .travel-map-custom-popup .info-item {
+        color: #d1d5db !important;
+    }
+    
+    html.auto .travel-map-custom-popup .info-item.wish-reason {
+        color: #60a5fa !important;
+    }
+    
+    html.auto .travel-map-custom-popup .info-item.description {
+        color: #e5e7eb !important;
+    }
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .travel-map-filters {
+        padding: 8px 12px;
+        gap: 6px;
+    }
+    
+    .travel-map-embedded-filters {
+        top: 8px;
+        padding: 6px 10px;
+        gap: 4px;
+        border-radius: 16px;
+        left: 8px;
+        right: 60px; /* 留出空间给右侧控制按钮 */
+        transform: none;
+        max-width: none;
+    }
+    
+    .travel-map-filter-tab {
+        padding: 5px 10px;
+        font-size: 11px;
+        min-height: 24px;
+        border-radius: 16px;
+    }
+    
+    .travel-map-controls {
+        top: 8px;
+        right: 8px;
+    }
+    
+    .travel-map-control-btn {
+        width: 36px;
+        height: 36px;
+    }
+    
+    .travel-map-control-btn svg {
+        width: 18px;
+        height: 18px;
+    }
+    
+    .travel-map-popup-content {
+        width: 95%;
+        max-width: 340px;
+    }
+    
+    .travel-map-popup-image {
+        height: 150px;
+    }
+    
+    .travel-map-simple-popup {
+        min-width: 250px;
+        max-width: 280px;
+        padding: 12px;
+    }
+    
+    .travel-map-error {
+        padding: 24px 16px;
+    }
+    
+    .travel-map-error-icon {
+        font-size: 36px;
+    }
+}
+
+@media (max-width: 480px) {
+    .travel-map-filters {
+        padding: 6px 8px;
+        gap: 4px;
+    }
+    
+    .travel-map-embedded-filters {
+        top: 6px;
+        padding: 4px 8px;
+        gap: 3px;
+        border-radius: 14px;
+        left: 6px;
+        right: 50px;
+    }
+    
+    .travel-map-filter-tab {
+        padding: 4px 8px;
+        font-size: 10px;
+        min-height: 20px;
+        border-radius: 12px;
+    }
+    
+    .travel-map-error {
+        padding: 16px 12px;
+        font-size: 13px;
+    }
+    
+    .travel-map-error-message {
+        font-size: 14px;
+    }
+    
+    .travel-map-error-icon {
+        font-size: 28px;
+        margin-bottom: 12px;
+    }
+}
+
+/* 强制箭头样式 - 确保最高优先级 */
+.travel-map-enhanced-popup.travel-map-custom-popup::after,
+.travel-map-enhanced-popup::after {
+    content: '' !important;
+    position: absolute !important;
+    top: 100% !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: 0 !important;
+    height: 0 !important;
+    border-left: 8px solid transparent !important;
+    border-right: 8px solid transparent !important;
+    border-top: 8px solid #ffffff !important;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1)) !important;
+    z-index: 10002 !important;
+}
+
+.travel-map-enhanced-popup.travel-map-custom-popup.popup-below::after,
+.travel-map-enhanced-popup.popup-below::after {
+    top: -8px !important;
+    border-top: none !important;
+    border-bottom: 8px solid #ffffff !important;
+}
+
+/* 深色模式箭头颜色 */
+html.dark .travel-map-enhanced-popup.travel-map-custom-popup::after,
+html.dark .travel-map-enhanced-popup::after {
+    border-top-color: #2d3748 !important;
+}
+
+html.dark .travel-map-enhanced-popup.travel-map-custom-popup.popup-below::after,
+html.dark .travel-map-enhanced-popup.popup-below::after {
+    border-bottom-color: #2d3748 !important;
+}
