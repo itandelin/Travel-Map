@@ -207,6 +207,9 @@
             }
             
             try {
+                // 立即确保容器尺寸正确（在地图初始化之前）
+                this.ensureMapSize();
+                
                 // 移动端优化设置
                 const isMobile = window.innerWidth <= 768;
                 // 获取地图样式
@@ -235,7 +238,7 @@
                 // 初始化地图
                 this.map = new AMap.Map(this.mapId, mapOptions);
                 
-                // 确保容器尺寸正确
+                // 再次确保容器尺寸正确
                 this.ensureMapSize();
                 
                 // 地图加载完成
@@ -1233,18 +1236,64 @@
         
         ensureMapSize() {
             const mapElement = document.getElementById(this.mapId);
-            if (mapElement) {
-                // 确保地图容器有明确的高度
-                const computedStyle = window.getComputedStyle(mapElement);
-                const height = computedStyle.height;
+            const wrapperElement = mapElement?.closest('.travel-map-wrapper');
+            const containerElement = mapElement?.closest('.travel-map-container');
+            
+            if (mapElement && wrapperElement && containerElement) {
+                // 获取短代码设置的高度值
+                const containerStyle = window.getComputedStyle(containerElement);
+                let targetHeight = containerStyle.height;
                 
-                if (height === '0px' || height === 'auto') {
-                    mapElement.style.height = '400px';
+                // 如果容器没有明确的高度，使用默认值
+                if (targetHeight === 'auto' || targetHeight === '0px') {
+                    targetHeight = '500px'; // 使用短代码的默认高度
+                }
+                
+                // 移动端响应式调整
+                const isMobile = window.innerWidth <= 768;
+                const isSmallMobile = window.innerWidth <= 480;
+                
+                if (isSmallMobile) {
+                    // 小屏幕限制最大高度为350px
+                    const heightValue = parseInt(targetHeight);
+                    if (heightValue > 350) {
+                        targetHeight = '350px';
+                    }
+                } else if (isMobile) {
+                    // 移动端限制最大高度为400px
+                    const heightValue = parseInt(targetHeight);
+                    if (heightValue > 400) {
+                        targetHeight = '400px';
+                    }
+                }
+                
+                // 确保包装器和地图元素有正确的高度
+                wrapperElement.style.height = targetHeight;
+                mapElement.style.height = targetHeight;
+                
+                // 检查CSS计算结果
+                const computedStyle = window.getComputedStyle(mapElement);
+                const currentHeight = computedStyle.height;
+                
+                // 如果高度仍然不正确，强制设置
+                if (currentHeight === '0px' || currentHeight === 'auto' || parseInt(currentHeight) < 300) {
+                    const fallbackHeight = isMobile ? '400px' : '500px';
+                    mapElement.style.height = fallbackHeight;
+                    wrapperElement.style.height = fallbackHeight;
                 }
                 
                 // 通知地图更新尺寸
                 if (this.map) {
-                    this.map.getSize();
+                    setTimeout(() => {
+                        this.map.getSize();
+                        // 最终检查
+                        if (mapElement.offsetHeight < 300) {
+                            const finalHeight = isMobile ? '400px' : '500px';
+                            mapElement.style.height = finalHeight;
+                            wrapperElement.style.height = finalHeight;
+                            this.map.getSize();
+                        }
+                    }, 50);
                 }
             }
         }
