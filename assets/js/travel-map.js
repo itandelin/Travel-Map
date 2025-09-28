@@ -561,11 +561,11 @@
             if (markerData.status === 'visited' && markerData.featured_image) {
                 return `
                     <div class="travel-marker travel-marker-with-image" style="
-                        width: 40px;
-                        height: 40px;
+                        width: 28px;
+                        height: 28px;
                         border-radius: 50%;
                         overflow: hidden;
-                        border: 3px solid ${color};
+                        border: 1px solid ${color};
                         box-shadow: 0 2px 8px rgba(0,0,0,0.3);
                         cursor: pointer;
                         position: relative;
@@ -585,17 +585,17 @@
             // 默认显示圆形标记（只有没有图片时才显示数字）
             return `
                 <div class="travel-marker travel-marker-default" style="
-                    width: 32px;
-                    height: 32px;
+                    width: 24px;
+                    height: 24px;
                     background: ${color};
-                    border: 3px solid #fff;
+                    border: 1px solid #fff;
                     border-radius: 50%;
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     color: #fff;
                     font-weight: bold;
-                    font-size: 12px;
+                    font-size: 10px;
                     box-shadow: 0 2px 8px rgba(0,0,0,0.3);
                     cursor: pointer;
                 ">${markerData.visit_count || '1'}</div>
@@ -714,8 +714,10 @@
                 const popupRect = this.popup.getBoundingClientRect();
                 
                 // 计算初始位置（默认显示在标记点上方，为箭头预留空间）
+                // 考虑标记点的实际尺寸，确保箭头指向标记点中心
+                // 标记点默认尺寸约为28px（有图片）或24px（默认），中心偏移约14px或12px
                 let left = pixel.x - (popupRect.width / 2);
-                let top = pixel.y - popupRect.height - 20; // 增加空间为箭头预留
+                let top = pixel.y - popupRect.height - 12; // 调整箭头与标记点的距离，考虑标记点半径
                 
                 // 边界检查
                 const containerWidth = this.container.offsetWidth;
@@ -729,7 +731,7 @@
                 
                 // 垂直边界检查：如果上方空间不足，显示在标记点下方
                 if (top < 10) {
-                    top = pixel.y + 25; // 显示在标记点下方
+                    top = pixel.y + 20; // 显示在标记点下方，调整距离
                     this.popup.classList.add('popup-below'); // 添加样式标记
                 } else {
                     this.popup.classList.remove('popup-below');
