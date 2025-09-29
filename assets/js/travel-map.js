@@ -338,34 +338,47 @@
         
         bindMobileGestures() {
             if (!('ontouchstart' in window)) {
-                return; // 不是移动设备
+                return; // 非触屏设备
             }
-            
-            const $container = $(this.container);
+
             let startX = 0;
             let startY = 0;
-            
-            // 弹窗滑动手势支持
-            $(document).on('touchstart', '.travel-map-popup-content', (e) => {
-                startX = e.originalEvent.touches[0].clientX;
-                startY = e.originalEvent.touches[0].clientY;
-            });
-            
-            $(document).on('touchmove', '.travel-map-popup-content', (e) => {
+
+            const handlerStart = (e) => {
+                const target = e.target && e.target.closest ? e.target.closest('.travel-map-popup-content') : null;
+                if (!target) return;
+                const touch = e.touches && e.touches[0];
+                if (!touch) return;
+                startX = touch.clientX;
+                startY = touch.clientY;
+            };
+
+            const handlerMove = (e) => {
+                const target = e.target && e.target.closest ? e.target.closest('.travel-map-popup-content') : null;
+                if (!target) return;
                 e.preventDefault(); // 防止页面滚动
-            });
-            
-            $(document).on('touchend', '.travel-map-popup-content', (e) => {
-                const endX = e.originalEvent.changedTouches[0].clientX;
-                const endY = e.originalEvent.changedTouches[0].clientY;
+            };
+
+            const handlerEnd = (e) => {
+                const target = e.target && e.target.closest ? e.target.closest('.travel-map-popup-content') : null;
+                if (!target) return;
+                const touch = e.changedTouches && e.changedTouches[0];
+                if (!touch) return;
+                const endX = touch.clientX;
+                const endY = touch.clientY;
                 const diffX = endX - startX;
                 const diffY = endY - startY;
-                
+
                 // 向下滑动关闭弹窗
                 if (diffY > 100 && Math.abs(diffX) < 50) {
                     this.closePopup();
                 }
-            });
+            };
+
+            // 使用捕获并禁用被动监听，以便调用 preventDefault
+            document.addEventListener('touchstart', handlerStart, { passive: false, capture: true });
+            document.addEventListener('touchmove', handlerMove, { passive: false, capture: true });
+            document.addEventListener('touchend', handlerEnd, { passive: false, capture: true });
         }
         
         loadMarkers() {
