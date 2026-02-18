@@ -1,0 +1,964 @@
+/**
+ * Travel Map Admin Styles
+ * 管理员界面样式
+ */
+
+/* 管理员页面通用样式 */
+.travel-map-admin-page {
+    max-width: 1200px;
+    margin: 20px 0;
+}
+
+.travel-map-admin-header {
+    background: #fff;
+    padding: 24px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+
+.travel-map-admin-title {
+    font-size: 24px;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0 0 8px 0;
+}
+
+.travel-map-admin-subtitle {
+    color: #6b7280;
+    margin: 0;
+}
+
+/* 设置页面样式 */
+.travel-map-settings-form {
+    background: #fff;
+    padding: 24px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.travel-map-form-section {
+    margin-top: 20px;
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.travel-map-form-section:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.travel-map-section-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0 0 16px 0;
+}
+
+.travel-map-form-row {
+    margin-bottom: 20px;
+}
+
+.travel-map-form-label {
+    display: block;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 6px;
+}
+
+.travel-map-form-input {
+    width: 100%;
+    max-width: 400px;
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: border-color 0.2s ease;
+}
+
+.travel-map-form-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.travel-map-form-textarea {
+    width: 100%;
+    max-width: 600px;
+    min-height: 100px;
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    resize: vertical;
+    font-family: inherit;
+}
+
+.travel-map-form-select {
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    background: #fff;
+    cursor: pointer;
+}
+
+.travel-map-form-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.travel-map-form-checkbox input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.travel-map-form-help {
+    font-size: 13px;
+    color: #6b7280;
+    margin-top: 4px;
+    line-height: 1.4;
+}
+
+.travel-map-api-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 16px;
+    font-size: 13px;
+    font-weight: 500;
+    margin-top: 8px;
+}
+
+.travel-map-api-status.valid {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.travel-map-api-status.invalid {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.travel-map-api-status.checking {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+/* 坐标管理页面样式 */
+.travel-map-markers-page {
+    display: grid;
+    grid-template-columns: 1fr 400px;
+    gap: 20px;
+    align-items: start;
+}
+
+.travel-map-markers-list {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.travel-map-markers-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: between;
+    align-items: center;
+}
+
+.travel-map-markers-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0;
+}
+
+.travel-map-add-marker-btn {
+    background: #3b82f6;
+    color: #fff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.travel-map-add-marker-btn:hover {
+    background: #2563eb;
+}
+
+.travel-map-markers-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.travel-map-markers-table th,
+.travel-map-markers-table td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.travel-map-markers-table th {
+    background: #f9fafb;
+    font-weight: 600;
+    color: #374151;
+    font-size: 13px;
+}
+
+.travel-map-markers-table td {
+    font-size: 14px;
+    color: #1f2937;
+}
+
+.travel-map-status-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.travel-map-status-badge.visited {
+    background: #fed7aa;
+    color: #9a3412;
+}
+
+.travel-map-status-badge.want_to_go {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.travel-map-status-badge.planned {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.travel-map-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.travel-map-action-btn {
+    padding: 4px 8px;
+    border: none;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.travel-map-edit-btn {
+    background: #eff6ff;
+    color: #1e40af;
+}
+
+.travel-map-edit-btn:hover {
+    background: #dbeafe;
+}
+
+.travel-map-delete-btn {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.travel-map-delete-btn:hover {
+    background: #fecaca;
+}
+
+/* 侧边栏表单 */
+.travel-map-sidebar {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    padding: 24px;
+    position: sticky;
+    top: 32px;
+}
+
+.travel-map-sidebar-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0 0 20px 0;
+}
+
+.travel-map-map-picker {
+    width: 100%;
+    height: 300px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    margin-bottom: 16px;
+    background: #f9fafb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+.travel-map-coord-inputs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.travel-map-form-submit {
+    width: 100%;
+    background: #10b981;
+    color: #fff;
+    border: none;
+    padding: 12px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.travel-map-form-submit:hover {
+    background: #059669;
+}
+
+/* 通知消息 */
+.travel-map-notice {
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.travel-map-notice.success {
+    background: #d1fae5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+}
+
+.travel-map-notice.error {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+}
+
+.travel-map-notice.info {
+    background: #dbeafe;
+    color: #1e40af;
+    border: 1px solid #93c5fd;
+}
+
+/* 模态对话框 */
+.travel-map-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 100000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.travel-map-modal.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.travel-map-modal-content {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    max-width: 500px;
+    width: 90%;
+    max-height: 90vh;
+    overflow: auto;
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+}
+
+.travel-map-modal.show .travel-map-modal-content {
+    transform: scale(1);
+}
+
+.travel-map-modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.travel-map-modal-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0;
+}
+
+.travel-map-modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #6b7280;
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.travel-map-modal-body {
+    padding: 24px;
+}
+
+.travel-map-modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+.travel-map-btn {
+    padding: 8px 16px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.travel-map-btn-primary {
+    background: #3b82f6;
+    color: #fff;
+    border-color: #3b82f6;
+}
+
+.travel-map-btn-primary:hover {
+    background: #2563eb;
+    border-color: #2563eb;
+}
+
+.travel-map-btn-secondary {
+    background: #fff;
+    color: #374151;
+}
+
+.travel-map-btn-secondary:hover {
+    background: #f9fafb;
+}
+
+/* 响应式设计 */
+@media (max-width: 1024px) {
+    .travel-map-markers-page {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .travel-map-sidebar {
+        position: static;
+    }
+}
+
+@media (max-width: 768px) {
+    .travel-map-admin-header {
+        padding: 16px;
+    }
+    
+    .travel-map-settings-form,
+    .travel-map-sidebar {
+        padding: 16px;
+    }
+    
+    .travel-map-markers-table {
+        font-size: 13px;
+    }
+    
+    .travel-map-markers-table th,
+    .travel-map-markers-table td {
+        padding: 8px 12px;
+    }
+    
+    .travel-map-coord-inputs {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* 使用说明区域样式 - WordPress标准样式 */
+.travel-map-usage-card {
+    background: #fff;
+    margin-bottom: 20px;
+    border-radius: 4px;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
+    border: 1px solid #c3c4c7;
+}
+
+.travel-map-usage-header {
+    background: none;
+    color: #1d2327;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 0;
+    border-bottom: 1px solid #c3c4c7;
+}
+
+.travel-map-usage-icon {
+    font-size: 16px;
+    line-height: 1;
+    color: #50575e;
+}
+
+.travel-map-usage-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1d2327;
+}
+
+.travel-map-usage-content {
+    padding: 20px;
+}
+
+/* 步骤样式 - WordPress标准样式 */
+.travel-map-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding: 16px;
+    background: #f6f7f7;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    border-left: 4px solid #2271b1;
+    flex: 1; /* 允许步骤卡片在同一行平均分配空间 */
+    min-width: 0; /* 防止内容溢出 */
+}
+
+.travel-map-step:last-child {
+    margin-bottom: 0;
+}
+
+/* 快速开始步骤容器 - 水平布局 */
+.travel-map-usage-card:first-of-type .travel-map-usage-content {
+    display: flex;
+    gap: 16px;
+    align-items: stretch;
+}
+
+/* 快速开始步骤在水平布局时的调整 */
+.travel-map-usage-card:first-of-type .travel-map-step {
+    margin-bottom: 0;
+    flex-direction: column;
+    text-align: center;
+    flex: 1;
+    min-width: 0;
+    align-items: center; /* 确保所有内容居中 */
+    justify-content: flex-start; /* 垂直方向从上开始 */
+}
+
+/* 快速开始中的数字标记在水平布局时的特殊样式 */
+.travel-map-usage-card:first-of-type .travel-map-step-number {
+    margin: 0 0 12px 0; /* 只设置底部间距 */
+}
+
+/* 快速开始中的内容区域居中 */
+.travel-map-usage-card:first-of-type .travel-map-step-content {
+    text-align: center;
+    width: 100%;
+}
+
+/* 快速开始中的标题居中 */
+.travel-map-usage-card:first-of-type .travel-map-step-content h4 {
+    text-align: center;
+    margin: 0 0 8px 0;
+}
+
+/* 快速开始中的段落居中 */
+.travel-map-usage-card:first-of-type .travel-map-step-content p {
+    text-align: center;
+    margin: 0;
+}
+
+.travel-map-step-number {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    background: #2271b1;
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+/* 快速开始中的数字标记在水平布局时的特殊样式 */
+.travel-map-usage-card:first-of-type .travel-map-step-number {
+    margin: 0 auto 12px auto;
+}
+
+.travel-map-step-content h4 {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1d2327;
+}
+
+.travel-map-step-content p {
+    margin: 0;
+    font-size: 13px;
+    color: #50575e;
+    line-height: 1.4;
+}
+
+.travel-map-step-content a {
+    color: #2271b1;
+    text-decoration: none;
+}
+
+.travel-map-step-content a:hover {
+    text-decoration: underline;
+}
+
+/* 参数网格 - WordPress标准网格布局 */
+.travel-map-params-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+    margin-bottom: 0;
+}
+
+.travel-map-param {
+    background: #fff;
+    padding: 16px;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
+}
+
+.travel-map-param-name {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    color: #2271b1;
+    background: #f0f6fc;
+    padding: 4px 8px;
+    border-radius: 4px;
+    display: inline-block;
+    margin-bottom: 8px;
+    border: 1px solid #8bb8df;
+}
+
+.travel-map-param-desc {
+    font-size: 13px;
+    color: #1d2327;
+    margin-bottom: 6px;
+    font-weight: 500;
+}
+
+.travel-map-param-default {
+    font-size: 12px;
+    color: #50575e;
+    margin-bottom: 8px;
+}
+
+.travel-map-param-example {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 12px;
+    background: #1d2327;
+    color: #f0f0f1;
+    padding: 6px 8px;
+    border-radius: 4px;
+    border: 1px solid #3c434a;
+}
+
+/* 状态网格 - WordPress标准网格布局 */
+.travel-map-status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 16px;
+    margin-bottom: 0;
+}
+
+.travel-map-status-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
+}
+
+.travel-map-status-badge {
+    flex-shrink: 0;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    text-align: center;
+    min-width: 50px;
+}
+
+.travel-map-status-badge.visited {
+    background: #fcf0cd;
+    color: #8a6914;
+}
+
+.travel-map-status-badge.want_to_go {
+    background: #d0e7ff;
+    color: #0a4b78;
+}
+
+.travel-map-status-badge.planned {
+    background: #d5e9d7;
+    color: #22662c;
+}
+
+.travel-map-status-info h4 {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1d2327;
+}
+
+.travel-map-status-info p {
+    margin: 0;
+    font-size: 13px;
+    color: #50575e;
+    line-height: 1.4;
+}
+
+/* 示例样式 - WordPress标准卡片布局 */
+.travel-map-examples {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 16px;
+    margin-bottom: 0;
+}
+
+.travel-map-example {
+    background: #fff;
+    padding: 16px;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
+}
+
+.travel-map-example h4 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1d2327;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #c3c4c7;
+}
+
+.travel-map-code-block {
+    position: relative;
+    background: #1d2327;
+    border-radius: 4px;
+    padding: 12px;
+    margin-bottom: 12px;
+    border: 1px solid #3c434a;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.travel-map-code-block code {
+    color: #f0f0f1;
+    font-size: 12px;
+    background: none;
+    padding: 0;
+}
+
+.travel-map-copy-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: #3c434a;
+    border: 1px solid #50575e;
+    color: #c3c4c7;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 11px;
+    transition: all 0.2s ease;
+}
+
+.travel-map-copy-btn:hover {
+    background: #50575e;
+    color: #f0f0f1;
+}
+
+.travel-map-example-desc {
+    margin: 0;
+    font-size: 12px;
+    color: #50575e;
+    line-height: 1.4;
+}
+
+/* 技巧样式 - WordPress标准网格布局 */
+.travel-map-tips {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* 两列网格布局 */
+    gap: 16px;
+    margin-bottom: 0;
+}
+
+.travel-map-tip {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    border-left: 4px solid #dba617;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
+}
+
+.travel-map-tip-icon {
+    flex-shrink: 0;
+    font-size: 16px;
+    line-height: 1;
+    color: #dba617;
+    margin-top: 2px;
+}
+
+.travel-map-tip-content h4 {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1d2327;
+}
+
+.travel-map-tip-content p {
+    margin: 0;
+    font-size: 13px;
+    color: #50575e;
+    line-height: 1.4;
+}
+
+/* 复制成功消息 - WordPress标准通知样式 */
+.travel-map-copy-message {
+    position: fixed;
+    top: 32px;
+    right: 32px;
+    z-index: 999999;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: 400;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, .04);
+    border: 1px solid #ddd;
+    animation: slideInRight 0.3s ease;
+}
+
+.travel-map-copy-message.success {
+    background: #fff;
+    color: #00a32a;
+    border-left: 4px solid #00a32a;
+}
+
+.travel-map-copy-message.error {
+    background: #fff;
+    color: #d63638;
+    border-left: 4px solid #d63638;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* 美化后的使用说明响应式设计 */
+@media (max-width: 768px) {
+    .travel-map-params-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .travel-map-status-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .travel-map-examples {
+        grid-template-columns: 1fr;
+    }
+    
+    /* 实用技巧在移动端单列布局 */
+    .travel-map-tips {
+        grid-template-columns: 1fr;
+    }
+    
+    /* 快速开始步骤在移动端垂直排列 */
+    .travel-map-usage-card:first-of-type .travel-map-usage-content {
+        flex-direction: column;
+        gap: 16px;
+    }
+    
+    .travel-map-usage-card:first-of-type .travel-map-step {
+        flex-direction: row;
+        text-align: left;
+        align-items: flex-start; /* 移动端恢复为顶部对齐 */
+    }
+    
+    /* 移动端时数字标记的样式 */
+    .travel-map-usage-card:first-of-type .travel-map-step-number {
+        margin: 0 12px 0 0; /* 移动端恢复为右侧间距 */
+    }
+    
+    /* 移动端时内容区域左对齐 */
+    .travel-map-usage-card:first-of-type .travel-map-step-content {
+        text-align: left;
+    }
+    
+    .travel-map-usage-card:first-of-type .travel-map-step-content h4 {
+        text-align: left;
+    }
+    
+    .travel-map-usage-card:first-of-type .travel-map-step-content p {
+        text-align: left;
+    }
+    
+
+    
+    .travel-map-copy-message {
+        top: 16px;
+        right: 16px;
+        left: 16px;
+    }
+    
+    .travel-map-usage-content {
+        padding: 16px;
+    }
+    
+    .travel-map-usage-header {
+        padding: 12px 16px;
+    }
+}
