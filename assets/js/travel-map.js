@@ -341,31 +341,37 @@
                 return; // 不是移动设备
             }
             
-            const $container = $(this.container);
             let startX = 0;
             let startY = 0;
+            const self = this; // 保存实例引用
             
-            // 弹窗滑动手势支持
-            $(document).on('touchstart', '.travel-map-popup-content', (e) => {
-                startX = e.originalEvent.touches[0].clientX;
-                startY = e.originalEvent.touches[0].clientY;
-            });
-            
-            $(document).on('touchmove', '.travel-map-popup-content', (e) => {
-                e.preventDefault(); // 防止页面滚动
-            });
-            
-            $(document).on('touchend', '.travel-map-popup-content', (e) => {
-                const endX = e.originalEvent.changedTouches[0].clientX;
-                const endY = e.originalEvent.changedTouches[0].clientY;
-                const diffX = endX - startX;
-                const diffY = endY - startY;
-                
-                // 向下滑动关闭弹窗
-                if (diffY > 100 && Math.abs(diffX) < 50) {
-                    this.closePopup();
+            // 弹窗滑动手势支持 - 使用原生 JavaScript
+            document.addEventListener('touchstart', function(e) {
+                if (e.target.closest('.travel-map-popup-content')) {
+                    startX = e.touches[0].clientX;
+                    startY = e.touches[0].clientY;
                 }
-            });
+            }, true);
+            
+            document.addEventListener('touchmove', function(e) {
+                if (e.target.closest('.travel-map-popup-content')) {
+                    e.preventDefault(); // 防止页面滚动
+                }
+            }, { passive: false, capture: true });
+            
+            document.addEventListener('touchend', function(e) {
+                if (e.target.closest('.travel-map-popup-content')) {
+                    const endX = e.changedTouches[0].clientX;
+                    const endY = e.changedTouches[0].clientY;
+                    const diffX = endX - startX;
+                    const diffY = endY - startY;
+                    
+                    // 向下滑动关闭弹窗
+                    if (diffY > 100 && Math.abs(diffX) < 50) {
+                        self.closePopup();
+                    }
+                }
+            }, true);
         }
         
         loadMarkers() {

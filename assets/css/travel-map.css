@@ -1501,3 +1501,188 @@ html.dark .travel-map-enhanced-popup.popup-below::after,
 html.dark .travel-map-custom-popup.popup-below::after {
     border-bottom-color: #2d3748 !important;
 }
+
+/* ========================================
+   移动端响应式弹窗样式
+   ======================================== */
+
+/* 平板和移动设备（宽度 ≤ 768px） */
+@media (max-width: 768px) {
+    /* 增强型弹窗 - 移动端缩小 */
+    .travel-map-enhanced-popup {
+        min-width: 160px !important;
+        max-width: 200px !important;
+    }
+    
+    .travel-map-enhanced-popup .popup-header-image {
+        height: 100px !important;
+    }
+    
+    .travel-map-enhanced-popup .popup-location-header {
+        padding: 6px 10px 4px 10px !important;
+    }
+    
+    .travel-map-enhanced-popup .location-flag {
+        font-size: 13px !important;
+    }
+    
+    .travel-map-enhanced-popup .location-name {
+        font-size: 13px !important;
+    }
+    
+    .travel-map-enhanced-popup .popup-articles-list {
+        padding: 0 10px 10px 10px !important;
+        max-height: 120px !important;
+    }
+    
+    .travel-map-enhanced-popup .popup-article-item {
+        font-size: 11px !important;
+        padding: 3px 0 !important;
+    }
+    
+    .travel-map-enhanced-popup .travel-map-popup-close {
+        width: 18px !important;
+        height: 18px !important;
+        font-size: 11px !important;
+        top: 5px !important;
+        right: 5px !important;
+    }
+    
+    /* 自定义弹窗 - 移动端缩小 */
+    .travel-map-custom-popup {
+        min-width: 160px !important;
+        max-width: 200px !important;
+    }
+    
+    .travel-map-custom-popup .popup-location {
+        padding: 5px 8px 3px 8px !important;
+    }
+    
+    .travel-map-custom-popup .location-flag {
+        font-size: 11px !important;
+    }
+    
+    .travel-map-custom-popup .location-name {
+        font-size: 11px !important;
+    }
+    
+    .travel-map-custom-popup .popup-articles {
+        padding: 3px 6px 5px 6px !important;
+        max-height: 100px !important;
+    }
+    
+    .travel-map-custom-popup .popup-article {
+        padding: 2px 3px !important;
+    }
+    
+    .travel-map-custom-popup .popup-article .article-title {
+        font-size: 10px !important;
+    }
+    
+    .travel-map-custom-popup .popup-article .article-date {
+        font-size: 8px !important;
+    }
+    
+    .travel-map-custom-popup .info-item {
+        font-size: 9px !important;
+    }
+    
+    .travel-map-custom-popup .travel-map-popup-close {
+        width: 18px !important;
+        height: 18px !important;
+        font-size: 11px !important;
+        top: 5px !important;
+        right: 5px !important;
+    }
+    
+    /* 简洁弹窗 - 移动端缩小 */
+    .travel-map-simple-popup {
+        min-width: 150px !important;
+        max-width: 190px !important;
+        padding: 10px 12px !important;
+    }
+    
+    .travel-map-simple-popup-place {
+        font-size: 12px !important;
+    }
+    
+    .travel-map-simple-popup-info {
+        font-size: 11px !important;
+    }
+    
+    .travel-map-simple-popup-close {
+        width: 16px !important;
+        height: 16px !important;
+        font-size: 13px !important;
+        top: 3px !important;
+        right: 3px !important;
+    }
+    
+    /* 悬停预览 - 移动端缩小 */
+    .hover-preview-content {
+        width: 100px !important;
+    }
+    
+    .hover-preview-content img {
+        height: 70px !important;
+    }
+    
+    .hover-preview-title {
+        font-size: 11px !important;
+        padding: 6px 8px !important;
+    }
+}
+
+/* 小屏手机（宽度 ≤ 480px） */
+@media (max-width: 480px) {
+    /* 增强型弹窗 - 进一步缩小 */
+    .travel-map-enhanced-popup {
+        min-width: 140px !important;
+        max-width: 180px !important;
+    }
+    
+    .travel-map-enhanced-popup .popup-header-image {
+        height: 80px !important;
+    }
+    
+    .travel-map-enhanced-popup .location-name {
+        font-size: 12px !important;
+    }
+    
+    .travel-map-enhanced-popup .popup-article-item {
+        font-size: 10px !important;
+    }
+    
+    /* 自定义弹窗 - 进一步缩小 */
+    .travel-map-custom-popup {
+        min-width: 140px !important;
+        max-width: 180px !important;
+    }
+    
+    .travel-map-custom-popup .location-name {
+        font-size: 10px !important;
+    }
+    
+    .travel-map-custom-popup .popup-article .article-title {
+        font-size: 9px !important;
+    }
+    
+    .travel-map-custom-popup .info-item {
+        font-size: 8px !important;
+    }
+    
+    /* 简洁弹窗 - 进一步缩小 */
+    .travel-map-simple-popup {
+        min-width: 130px !important;
+        max-width: 170px !important;
+        padding: 8px 10px !important;
+    }
+    
+    .travel-map-simple-popup-place {
+        font-size: 11px !important;
+    }
+    
+    .travel-map-simple-popup-info {
+        font-size: 10px !important;
+    }
+}
