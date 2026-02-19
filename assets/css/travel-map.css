@@ -244,19 +244,22 @@ html.auto .travel-map-container {
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-radius 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.travel-marker-with-image:hover {
-    transform: scale(3.0);
-    box-shadow: 0 12px 35px rgba(0,0,0,0.6) !important;
-    border-radius: 5px !important;
-    border-width: 0.3px !important;
-    z-index: 1000;
-}
-
-.travel-marker-default:hover {
-    transform: scale(2.0);
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5) !important;
-    border-radius: 4px !important;
-    z-index: 1000;
+/* 桌面端鼠标悬停放大效果 - 仅在非触摸设备上生效 */
+@media (hover: hover) and (pointer: fine) {
+    .travel-marker-with-image:hover {
+        transform: scale(3.0);
+        box-shadow: 0 12px 35px rgba(0,0,0,0.6) !important;
+        border-radius: 5px !important;
+        border-width: 0.3px !important;
+        z-index: 1000;
+    }
+    
+    .travel-marker-default:hover {
+        transform: scale(2.0);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5) !important;
+        border-radius: 4px !important;
+        z-index: 1000;
+    }
 }
 
 /* 悬停预览样式 */
