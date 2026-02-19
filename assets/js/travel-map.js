@@ -653,6 +653,21 @@
             this.map.on('zoom', this._popupMapMoveHandler);
             this.map.on('zoomchange', this._popupMapMoveHandler);
             this.map.on('resize', this._popupMapMoveHandler);
+            
+            // 特别针对移动端触摸事件的兼容处理
+            // 高德地图在移动端的触摸操作会触发 movestart/moveend 事件
+            this._popupMapMoveStartHandler = () => {
+                // 移动开始时不做处理
+            };
+            this._popupMapMoveEndHandler = () => {
+                // 移动结束后立即更新位置
+                if (this.popup && this.currentPopupMarkerData) {
+                    this.updatePopupPosition();
+                }
+            };
+            
+            this.map.on('movestart', this._popupMapMoveStartHandler);
+            this.map.on('moveend', this._popupMapMoveEndHandler);
         }
         
         /**
@@ -665,6 +680,16 @@
                 this.map.off('zoomchange', this._popupMapMoveHandler);
                 this.map.off('resize', this._popupMapMoveHandler);
                 this._popupMapMoveHandler = null;
+            }
+            
+            if (this._popupMapMoveStartHandler) {
+                this.map.off('movestart', this._popupMapMoveStartHandler);
+                this._popupMapMoveStartHandler = null;
+            }
+            
+            if (this._popupMapMoveEndHandler) {
+                this.map.off('moveend', this._popupMapMoveEndHandler);
+                this._popupMapMoveEndHandler = null;
             }
         }
         
@@ -681,9 +706,14 @@
                 const popupRect = this.popup.getBoundingClientRect();
                 const containerRect = this.container.getBoundingClientRect();
                 
+                // 响应式距离计算：根据设备和屏幕宽度调整
+                const isMobile = window.innerWidth <= 768;
+                const arrowGap = isMobile ? 6 : 8; // 移动端箭头间隙增加到 6px
+                const markerRadius = isMobile ? 14 : 14; // 移动端标记点半径增加到 14px
+                
                 // 计算相对容器的位置
                 let left = pixel.x - (popupRect.width / 2);
-                let top = pixel.y - popupRect.height - 12;
+                let top = pixel.y - popupRect.height - arrowGap - markerRadius;
                 
                 // 边界检查
                 const containerWidth = containerRect.width;
@@ -697,7 +727,7 @@
                 
                 // 垂直边界检查
                 if (top < 10) {
-                    top = pixel.y + 20;
+                    top = pixel.y + arrowGap + markerRadius; // 显示在标记点下方
                     this.popup.classList.add('popup-below');
                 } else {
                     this.popup.classList.remove('popup-below');
@@ -707,8 +737,16 @@
                     top = Math.max(10, containerHeight - popupRect.height - 10);
                 }
                 
-                this.popup.style.left = left + 'px';
-                this.popup.style.top = top + 'px';
+                // 使用 requestAnimationFrame 优化动画性能（特别是在移动端）
+                if (window.requestAnimationFrame) {
+                    window.requestAnimationFrame(() => {
+                        this.popup.style.left = left + 'px';
+                        this.popup.style.top = top + 'px';
+                    });
+                } else {
+                    this.popup.style.left = left + 'px';
+                    this.popup.style.top = top + 'px';
+                }
             }
         }
         
@@ -806,9 +844,13 @@
                 
                 // 计算初始位置（默认显示在标记点上方，为箭头预留空间）
                 // 考虑标记点的实际尺寸，确保箭头指向标记点中心
-                // 标记点默认尺寸约为28px（有图片）或24px（默认），中心偏移约14px或12px
+                // 响应式距离计算：根据设备和屏幕宽度调整
+                const isMobile = window.innerWidth <= 768;
+                const arrowGap = isMobile ? 6 : 8; // 移动端箭头间隙增加到 6px
+                const markerRadius = isMobile ? 14 : 14; // 移动端标记点半径增加到 14px
+                                
                 let left = pixel.x - (popupRect.width / 2);
-                let top = pixel.y - popupRect.height - 12; // 调整箭头与标记点的距离，考虑标记点半径
+                let top = pixel.y - popupRect.height - arrowGap - markerRadius;
                 
                 // 边界检查
                 const containerWidth = this.container.offsetWidth;
@@ -822,7 +864,7 @@
                 
                 // 垂直边界检查：如果上方空间不足，显示在标记点下方
                 if (top < 10) {
-                    top = pixel.y + 20; // 显示在标记点下方，调整距离
+                    top = pixel.y + arrowGap + markerRadius; // 显示在标记点下方，调整距离
                     this.popup.classList.add('popup-below'); // 添加样式标记
                 } else {
                     this.popup.classList.remove('popup-below');
@@ -1340,57 +1382,52 @@
             const mapElement = document.getElementById(this.mapId);
             const wrapperElement = mapElement?.closest('.travel-map-wrapper');
             const containerElement = mapElement?.closest('.travel-map-container');
-            
+                    
             if (mapElement && wrapperElement && containerElement) {
-                // 获取短代码设置的高度值
-                const containerStyle = window.getComputedStyle(containerElement);
-                let targetHeight = containerStyle.height;
-                
-                // 如果容器没有明确的高度，使用默认值
-                if (targetHeight === 'auto' || targetHeight === '0px') {
-                    targetHeight = '500px'; // 使用短代码的默认高度
-                }
-                
-                // 移动端响应式调整
+                // 移动端响应式调整 - 使用竖型显示
                 const isMobile = window.innerWidth <= 768;
                 const isSmallMobile = window.innerWidth <= 480;
-                
+                const containerWidth = containerElement.offsetWidth;
+                        
+                // 根据容器实际宽度计算目标高度（与 CSS 保持一致）
+                let targetHeight;
                 if (isSmallMobile) {
-                    // 小屏幕限制最大高度为350px
-                    const heightValue = parseInt(targetHeight);
-                    if (heightValue > 350) {
-                        targetHeight = '350px';
-                    }
+                    // 小屏幕使用竖型显示：高度 = 宽度 × 1.5
+                    targetHeight = Math.round(containerWidth * 1.5) + 'px';
                 } else if (isMobile) {
-                    // 移动端限制最大高度为400px
-                    const heightValue = parseInt(targetHeight);
-                    if (heightValue > 400) {
-                        targetHeight = '400px';
+                    // 平板和移动设备使用竖型显示：高度 = 宽度 × 1.3
+                    targetHeight = Math.round(containerWidth * 1.3) + 'px';
+                } else {
+                    // 桌面设备使用默认高度或容器设置的高度
+                    const containerStyle = window.getComputedStyle(containerElement);
+                    targetHeight = containerStyle.height;
+                    if (targetHeight === 'auto' || targetHeight === '0px') {
+                        targetHeight = '500px';
                     }
                 }
-                
+                        
                 // 确保包装器和地图元素有正确的高度
                 wrapperElement.style.height = targetHeight;
                 mapElement.style.height = targetHeight;
-                
-                // 检查CSS计算结果
+                        
+                // 检查 CSS 计算结果
                 const computedStyle = window.getComputedStyle(mapElement);
                 const currentHeight = computedStyle.height;
-                
+                        
                 // 如果高度仍然不正确，强制设置
                 if (currentHeight === '0px' || currentHeight === 'auto' || parseInt(currentHeight) < 300) {
-                    const fallbackHeight = isMobile ? '400px' : '500px';
+                    const fallbackHeight = isMobile ? Math.round(containerWidth * (isSmallMobile ? 1.5 : 1.3)) + 'px' : '500px';
                     mapElement.style.height = fallbackHeight;
                     wrapperElement.style.height = fallbackHeight;
                 }
-                
+                        
                 // 通知地图更新尺寸
                 if (this.map) {
                     setTimeout(() => {
                         this.map.getSize();
                         // 最终检查
                         if (mapElement.offsetHeight < 300) {
-                            const finalHeight = isMobile ? '400px' : '500px';
+                            const finalHeight = isMobile ? Math.round(containerWidth * (isSmallMobile ? 1.5 : 1.3)) + 'px' : '500px';
                             mapElement.style.height = finalHeight;
                             wrapperElement.style.height = finalHeight;
                             this.map.getSize();
