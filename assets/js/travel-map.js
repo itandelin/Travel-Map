@@ -5,6 +5,36 @@
 
 (function() {
     'use strict';
+    const escapeHtml = (value) => {
+        return String(value ?? '').replace(/[&<>"'`]/g, (char) => {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;',
+                '`': '&#96;'
+            };
+            return map[char] || char;
+        });
+    };
+
+    const safeUrl = (value) => {
+        const url = String(value ?? '').trim();
+        if (!url) return '';
+        if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('//')) {
+            return url;
+        }
+        if (/^data:image\/[a-zA-Z0-9.+-]+;base64,/.test(url)) {
+            return url;
+        }
+        return '';
+    };
+
+    const safeNumberText = (value, fallback = '1') => {
+        const num = Number(value);
+        return Number.isFinite(num) ? String(num) : fallback;
+    };
     class TravelMap {
         constructor(container, options) {
             this.container = typeof container === 'string' ? document.querySelector(container) : container;
@@ -422,7 +452,7 @@
             
             const marker = new AMap.Marker({
                 position: [markerData.longitude, markerData.latitude],
-                title: markerData.title,
+                title: String(markerData.title || ''),
                 content: this.createMarkerContent(markerData),
                 anchor: 'center'
             });
@@ -481,8 +511,8 @@
                 }, 350);
             });
             
-            // 添加悬停效果（只对有图片的标记点）
-            if (markerData.status === 'visited' && markerData.featured_image) {
+            // 添加悬停效果（只对有安全图片URL的标记点）
+            if (markerData.status === 'visited' && safeUrl(markerData.featured_image)) {
                 this.addMarkerHoverEffect(marker, markerData);
             }
             
@@ -519,11 +549,16 @@
             const pixel = this.map.lngLatToContainer([markerData.longitude, markerData.latitude]);
             
             const preview = document.createElement('div');
+            const safeTitle = escapeHtml(markerData.title || '');
+            const safeImage = safeUrl(markerData.featured_image);
+            if (!safeImage) {
+                return;
+            }
             preview.className = 'travel-map-hover-preview';
             preview.innerHTML = `
                 <div class="hover-preview-content">
-                    <img src="${markerData.featured_image}" alt="${markerData.title}">
-                    <div class="hover-preview-title">${markerData.title}</div>
+                    <img src="${safeImage}" alt="${safeTitle}">
+                    <div class="hover-preview-title">${safeTitle}</div>
                 </div>
             `;
             
@@ -565,9 +600,12 @@
             };
             
             const color = colors[markerData.status] || '#6b7280';
+            const safeTitle = escapeHtml(markerData.title || '');
+            const safeImage = safeUrl(markerData.featured_image);
+            const safeVisitCount = safeNumberText(markerData.visit_count, '1');
             
             // 如果是"已去"状态且有文章图片，显示图片标记（不显示数字，更美观）
-            if (markerData.status === 'visited' && markerData.featured_image) {
+            if (markerData.status === 'visited' && safeImage) {
                 return `
                     <div class="travel-marker travel-marker-with-image" style="
                         width: 28px;
@@ -580,8 +618,8 @@
                         position: relative;
                         background: #fff;
                     ">
-                        <img src="${markerData.featured_image}" 
-                             alt="${markerData.title}" 
+                        <img src="${safeImage}" 
+                             alt="${safeTitle}" 
                              style="
                                  width: 100%;
                                  height: 100%;
@@ -607,7 +645,7 @@
                     font-size: 10px;
                     box-shadow: 0 2px 8px rgba(0,0,0,0.3);
                     cursor: pointer;
-                ">${markerData.visit_count || '1'}</div>
+                ">${safeVisitCount}</div>
             `;
         }
         
@@ -785,7 +823,8 @@
         renderArticlePopup(markerData, articles, pixel) {
             // 按照参考图重新设计：顶部特色图 + 地点信息 + 文章标题列表
             const latestArticle = articles.length > 0 ? articles[0] : null;
-            const featuredImage = latestArticle && latestArticle.featured_image ? latestArticle.featured_image : null;
+            const featuredImage = latestArticle && latestArticle.featured_image ? safeUrl(latestArticle.featured_image) : null;
+            const safeLocationName = escapeHtml(markerData.title || '');
             
             const popupHtml = `
                 <div class="travel-map-enhanced-popup travel-map-custom-popup" 
@@ -797,19 +836,19 @@
                     
                     ${featuredImage ? `
                     <div class="popup-header-image">
-                        <img src="${featuredImage}" alt="${markerData.title}">
+                        <img src="${featuredImage}" alt="${safeLocationName}">
                     </div>
                     ` : ''}
                     
                     <div class="popup-location-header">
                         <span class="location-flag">📍</span>
-                        <span class="location-name">${markerData.title}</span>
+                        <span class="location-name">${safeLocationName}</span>
                     </div>
                     
                     <div class="popup-articles-list">
                         ${articles.map(article => `
-                            <div class="popup-article-item" data-url="${article.permalink}" data-travel-map-article="true">
-                                ${article.title}
+                            <div class="popup-article-item" data-url="${escapeHtml(safeUrl(article.permalink))}" data-travel-map-article="true">
+                                ${escapeHtml(article.title || '')}
                             </div>
                         `).join('')}
                     </div>
@@ -910,7 +949,7 @@
             articleItems.forEach(item => {
                 item.addEventListener('click', (e) => {
                     // 不阻止事件传播，让链接正常打开
-                    const url = item.getAttribute('data-url');
+                    const url = safeUrl(item.getAttribute('data-url'));
                     if (url) {
                         window.open(url, '_blank');
                     }
@@ -1041,33 +1080,37 @@
             
             let contentHtml = '';
             
+            const safeTitle = escapeHtml(markerData.title || '');
+            const safeDescription = escapeHtml(markerData.description || '');
+            const safeWishReason = escapeHtml(markerData.wish_reason || '');
+            const safePlannedDate = escapeHtml(markerData.planned_date || '');
             if (markerData.status === 'planned') {
-                const plannedDate = markerData.planned_date ? `计划日期：${markerData.planned_date}` : '计划日期：未定';
+                const plannedDate = safePlannedDate ? `计划日期：${safePlannedDate}` : '计划日期：未定';
                 contentHtml = `<div class="info-item">${plannedDate}</div>`;
                 
-                if (markerData.description) {
-                    contentHtml += `<div class="info-item description">地点描述：${markerData.description}</div>`;
+                if (safeDescription) {
+                    contentHtml += `<div class="info-item description">地点描述：${safeDescription}</div>`;
                 }
             } else if (markerData.status === 'want_to_go') {
                 // 想去状态：显示想去理由和地点描述
-                if (markerData.wish_reason) {
-                    contentHtml += `<div class="info-item wish-reason">想去理由：${markerData.wish_reason}</div>`;
+                if (safeWishReason) {
+                    contentHtml += `<div class="info-item wish-reason">想去理由：${safeWishReason}</div>`;
                 }
                 
-                if (markerData.description) {
-                    contentHtml += `<div class="info-item description">地点描述：${markerData.description}</div>`;
+                if (safeDescription) {
+                    contentHtml += `<div class="info-item description">地点描述：${safeDescription}</div>`;
                 }
                 
                 // 如果两个字段都为空，显示默认状态
-                if (!markerData.wish_reason && !markerData.description) {
+                if (!safeWishReason && !safeDescription) {
                     contentHtml = `<div class="info-item">状态：想去</div>`;
                 }
             } else {
                 // 其他状态
                 contentHtml = `<div class="info-item">状态：${statusTexts[markerData.status] || '未知'}</div>`;
                 
-                if (markerData.description) {
-                    contentHtml += `<div class="info-item description">地点描述：${markerData.description}</div>`;
+                if (safeDescription) {
+                    contentHtml += `<div class="info-item description">地点描述：${safeDescription}</div>`;
                 }
             }
             
@@ -1079,7 +1122,7 @@
                      data-prevent-gallery="true">
                     <button class="travel-map-simple-popup-close" type="button">&times;</button>
                     <div class="travel-map-simple-popup-content">
-                        <div class="travel-map-simple-popup-place">${markerData.title}</div>
+                        <div class="travel-map-simple-popup-place">${safeTitle}</div>
                         <div class="travel-map-simple-popup-info">
                             ${contentHtml}
                         </div>
@@ -1359,10 +1402,11 @@
                 return;
             }
             
+            const safeMessage = escapeHtml(message);
             const errorHtml = `
                 <div class="travel-map-error">
                     <div class="travel-map-error-icon">⚠️</div>
-                    <div class="travel-map-error-message">${message}</div>
+                    <div class="travel-map-error-message">${safeMessage}</div>
                     <div class="travel-map-error-details">
                         <p>可能的解决方案：</p>
                         <ul>

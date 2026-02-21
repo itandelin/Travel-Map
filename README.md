@@ -58,6 +58,24 @@
 [travel_map]
 ```
 
+### 4.1 模板用法说明（主题/小工具）
+
+如果短代码不是放在文章/页面正文里，而是放在主题模板或小工具中，建议在渲染短代码前显式加载资源，以确保样式与脚本可用：
+
+```php
+<?php
+if (function_exists('travel_map_enqueue_assets')) {
+    travel_map_enqueue_assets();
+}
+?>
+```
+
+然后输出短代码即可：
+
+```php
+<?php echo do_shortcode('[travel_map]'); ?>
+```
+
 ## 📖 短代码参数
 
 | 参数名 | 默认值 | 描述 |

@@ -12,9 +12,11 @@ if (!defined('ABSPATH')) {
 $center_parts = explode(',', $atts['center']);
 $center_lat = isset($center_parts[0]) ? floatval(trim($center_parts[0])) : 35.0;
 $center_lng = isset($center_parts[1]) ? floatval(trim($center_parts[1])) : 105.0;
+$show_filter_tabs = filter_var($atts['filter_tabs'], FILTER_VALIDATE_BOOLEAN);
+$container_classes = 'travel-map-container' . ($show_filter_tabs ? '' : ' travel-map-no-tabs');
 ?>
 
-<div class="travel-map-container" style="width: <?php echo esc_attr($atts['width']); ?>; height: <?php echo esc_attr($atts['height']); ?>;">
+<div class="<?php echo esc_attr($container_classes); ?>" style="width: <?php echo esc_attr($atts['width']); ?>; --travel-map-height: <?php echo esc_attr($atts['height']); ?>;">
     
     <div class="travel-map-wrapper">
         <div class="travel-map-loading">
@@ -22,7 +24,17 @@ $center_lng = isset($center_parts[1]) ? floatval(trim($center_parts[1])) : 105.0
             <div class="travel-map-loading-text"><?php _e('正在加载地图...', TRAVEL_MAP_TEXT_DOMAIN); ?></div>
         </div>
         
-        <div class="travel-map" id="<?php echo esc_attr($map_id); ?>"></div>
+        <div
+            class="travel-map"
+            id="<?php echo esc_attr($map_id); ?>"
+            data-travel-map-init="1"
+            data-zoom="<?php echo esc_attr(intval($atts['zoom'])); ?>"
+            data-center-lat="<?php echo esc_attr($center_lat); ?>"
+            data-center-lng="<?php echo esc_attr($center_lng); ?>"
+            data-show-filter-tabs="<?php echo $show_filter_tabs ? '1' : '0'; ?>"
+            data-status="<?php echo esc_attr($atts['status']); ?>"
+            data-api-key="<?php echo esc_attr($api_key); ?>"
+        ></div>
         
         <div class="travel-map-controls">
             <button class="travel-map-control-btn" data-action="zoom-in" title="<?php _e('放大', TRAVEL_MAP_TEXT_DOMAIN); ?>">
@@ -49,151 +61,8 @@ $center_lng = isset($center_parts[1]) ? floatval(trim($center_parts[1])) : 105.0
     </div>
 </div>
 
-<!-- 原生JavaScript版本 - 无jQuery依赖 -->
-<script>
-(function() {
-    'use strict';
-    
-    console.log('Travel Map: 使用原生JavaScript初始化 - v<?php echo TRAVEL_MAP_VERSION; ?>');
-    console.log('API Key:', '<?php echo esc_js($api_key ? '已配置' : '未配置'); ?>');
-    
-    // 直接初始化，不等待jQuery
-    function initMap() {
-        console.log('开始初始化地图');
-        
-        // 检查脚本是否已加载
-        if (typeof window.initTravelMap !== 'function') {
-            console.log('动态加载地图脚本...');
-            loadScript('<?php echo TRAVEL_MAP_PLUGIN_URL . 'assets/js/travel-map.js?v=' . TRAVEL_MAP_VERSION . '.' . time(); ?>', function() {
-                console.log('地图脚本加载完成');
-                setTimeout(function() {
-                    if (typeof window.initTravelMap === 'function') {
-                        startMap();
-                    } else {
-                        showError('地图脚本加载失败');
-                    }
-                }, 100);
-            });
-        } else {
-            startMap();
-        }
-    }
-    
-    function startMap() {
-        try {
-            console.log('开始启动地图');
-            window.initTravelMap('#<?php echo esc_js($map_id); ?>', {
-                zoom: <?php echo intval($atts['zoom']); ?>,
-                center: [<?php echo floatval($center_lng); ?>, <?php echo floatval($center_lat); ?>],
-                showFilterTabs: <?php echo filter_var($atts['filter_tabs'], FILTER_VALIDATE_BOOLEAN) ? 'true' : 'false'; ?>,
-                defaultStatus: '<?php echo esc_js($atts['status']); ?>',
-                apiKey: '<?php echo esc_js($api_key); ?>'
-            });
-            console.log('地图启动成功');
-        } catch (error) {
-            console.error('地图初始化失败:', error);
-            showError('地图初始化失败: ' + error.message);
-        }
-    }
-    
-    function loadScript(src, callback) {
-        var script = document.createElement('script');
-        script.src = src;
-        script.onload = callback;
-        script.onerror = function() {
-            console.error('脚本加载失败:', src);
-            showError('脚本加载失败');
-        };
-        document.head.appendChild(script);
-    }
-    
-    function showError(message) {
-        var container = document.getElementById('<?php echo esc_js($map_id); ?>');
-        if (container && container.parentElement) {
-            container.parentElement.innerHTML = 
-                '<div class="travel-map-error">' +
-                    '<div class="travel-map-error-icon">⚠️</div>' +
-                    '<div class="travel-map-error-message">' + message + '</div>' +
-                    '<div class="travel-map-error-details">' +
-                        '<p>可能的解决方案：</p>' +
-                        '<ul>' +
-                            '<li>检查网络连接是否正常</li>' +
-                            '<li>确认高德地图API密钥配置正确</li>' +
-                            '<li>刷新页面重试</li>' +
-                        '</ul>' +
-                        '<button class="travel-map-retry-btn" onclick="location.reload()">刷新页面</button>' +
-                    '</div>' +
-                '</div>';
-        }
-    }
-    
-    // 等待DOM加载完成
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM加载完成，开始初始化');
-            setTimeout(initMap, 100);
-        });
-    } else {
-        console.log('DOM已就绪，立即初始化');
-        setTimeout(initMap, 100);
-    }
-})();
-</script>
-
-<style>
-/* 当前地图实例的特定样式 */
-#<?php echo esc_attr($map_id); ?> {
-    width: 100%;
-    height: <?php echo esc_attr($atts['height']); ?>;
-    min-height: 400px;
-    background: #f5f5f5;
-    border-radius: 0 0 8px 8px;
-}
-
-/* 确保地图容器有明确的高度 */
-.travel-map-container[style*="height: <?php echo esc_attr($atts['height']); ?>"] .travel-map-wrapper {
-    height: <?php echo esc_attr($atts['height']); ?>;
-    min-height: 400px;
-}
-
-<?php if (!filter_var($atts['filter_tabs'], FILTER_VALIDATE_BOOLEAN)): ?>
-#<?php echo esc_attr($map_id); ?> {
-    border-radius: 8px;
-}
-<?php endif; ?>
-
-/* 响应式高度调整 */
-@media (max-width: 768px) {
-    .travel-map-container[style*="height: <?php echo esc_attr($atts['height']); ?>"] {
-        height: <?php echo intval($atts['height']) > 400 ? '350px' : esc_attr($atts['height']); ?> !important;
-    }
-}
-
-@media (max-width: 480px) {
-    .travel-map-container[style*="height: <?php echo esc_attr($atts['height']); ?>"] {
-        height: 300px !important;
-    }
-}
-</style>
-
-<?php
-// 添加结构化数据
-$schema_data = array(
-    '@context' => 'https://schema.org',
-    '@type' => 'Map',
-    'name' => get_the_title() . ' - ' . __('旅行地图', TRAVEL_MAP_TEXT_DOMAIN),
-    'description' => __('互动式旅行地图，展示已去、想去和计划的旅行目的地', TRAVEL_MAP_TEXT_DOMAIN),
-    'url' => get_permalink(),
-    'mapType' => 'InteractiveMap'
-);
-?>
-
-<script type="application/ld+json">
-<?php echo json_encode($schema_data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>
-</script>
-
 <!-- 无障碍访问支持 -->
-<div class="travel-map-accessibility" style="position: absolute; left: -9999px;">
+<div class="travel-map-accessibility">
     <h3><?php _e('旅行地图', TRAVEL_MAP_TEXT_DOMAIN); ?></h3>
     <p><?php _e('这是一个交互式地图，显示了旅行目的地。您可以使用Tab键导航，使用Enter键激活控件。', TRAVEL_MAP_TEXT_DOMAIN); ?></p>
     <ul>

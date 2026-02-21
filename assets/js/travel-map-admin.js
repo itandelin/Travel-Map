@@ -606,6 +606,41 @@
             if (typeof ImportExport !== 'undefined' && $('.travel-map-import-export').length > 0) {
                 new ImportExport();
             }
+
+            const $statusField = $('#marker_status');
+            if ($statusField.length) {
+                $statusField.on('change', function() {
+                    const status = $(this).val();
+                    $('.status-fields').hide();
+                    $('.' + status + '-fields').show();
+                }).trigger('change');
+                
+                window.resetMarkerForm = function() {
+                    const $form = $('.travel-map-marker-form');
+                    if ($form.length) {
+                        $form[0].reset();
+                    }
+                    $('#marker_id').val('');
+                    $('.status-fields').hide();
+                    $('.visited-fields').show();
+                };
+                
+                if ($('.travel-map-form-cancel').length === 0 && $('.travel-map-form-submit').length > 0) {
+                    $('.travel-map-form-submit').after(
+                        '<button type=\"button\" class=\"button travel-map-form-cancel\" onclick=\"resetMarkerForm()\" style=\"margin-left: 8px;\">取消</button>'
+                    );
+                }
+            }
+            
+            const $focusButton = $('.travel-map-add-marker-btn[data-focus-target]');
+            if ($focusButton.length) {
+                $focusButton.on('click', function() {
+                    const targetId = $(this).data('focus-target');
+                    if (targetId) {
+                        $('#' + targetId).trigger('focus');
+                    }
+                });
+            }
         } catch (error) {
             // 初始化失败静默处理
         }

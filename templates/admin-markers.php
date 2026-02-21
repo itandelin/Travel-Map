@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
             <div class="travel-map-markers-header">
                 <h2 class="travel-map-markers-title"><?php _e('地点标记列表', TRAVEL_MAP_TEXT_DOMAIN); ?></h2>
                 <div class="travel-map-markers-actions">
-                    <button type="button" class="travel-map-add-marker-btn" onclick="document.getElementById('marker_title').focus()">
+                    <button type="button" class="travel-map-add-marker-btn" data-focus-target="marker_title">
                         <?php _e('添加新标记', TRAVEL_MAP_TEXT_DOMAIN); ?>
                     </button>
                 </div>
@@ -308,29 +308,3 @@ if (!defined('ABSPATH')) {
         </div>
     </div>
 </div>
-
-<script>
-jQuery(document).ready(function($) {
-    // 状态特定字段显示/隐藏
-    $('#marker_status').on('change', function() {
-        const status = $(this).val();
-        $('.status-fields').hide();
-        $('.' + status + '-fields').show();
-    }).trigger('change');
-    
-    // 重置表单
-    window.resetMarkerForm = function() {
-        $('.travel-map-marker-form')[0].reset();
-        $('#marker_id').val('');
-        $('.status-fields').hide();
-        $('.visited-fields').show();
-    };
-    
-    // 表单取消按钮
-    if ($('.travel-map-form-cancel').length === 0) {
-        $('.travel-map-form-submit').after(
-            '<button type="button" class="button travel-map-form-cancel" onclick="resetMarkerForm()" style="margin-left: 8px;">取消</button>'
-        );
-    }
-});
-</script>

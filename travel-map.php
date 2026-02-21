@@ -36,6 +36,7 @@ class TravelMapPlugin {
      */
     private static $instance = null;
     private static $frontend_scripts_loaded = false;
+    private static $markers_cache_cleared = false;
     
     /**
      * 获取插件实例（单例模式）
@@ -67,7 +68,7 @@ class TravelMapPlugin {
         add_action('init', array($this, 'init'));
         add_action('admin_init', array($this, 'admin_init'));
         add_action('admin_menu', array($this, 'admin_menu'));
-        add_action('wp_enqueue_scripts', array($this, 'enqueue_frontend_scripts'));
+        add_action('wp_enqueue_scripts', array($this, 'maybe_enqueue_frontend_scripts'));
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_scripts'));
         
         // 短代码注册（早期加载）
@@ -105,6 +106,63 @@ class TravelMapPlugin {
         
         // 检查依赖
         $this->check_dependencies();
+    }
+
+    /**
+     * 资源版本号（基于文件修改时间）
+     */
+    private function get_asset_version($relative_path) {
+        $path = TRAVEL_MAP_PLUGIN_PATH . ltrim($relative_path, '/');
+        if (file_exists($path)) {
+            return (string) filemtime($path);
+        }
+        return TRAVEL_MAP_VERSION;
+    }
+
+    /**
+     * 前端脚本按需加载
+     */
+    public function maybe_enqueue_frontend_scripts() {
+        if (self::$frontend_scripts_loaded) {
+            return;
+        }
+        
+        global $posts;
+        if (is_array($posts)) {
+            foreach ($posts as $post) {
+                if ($post && has_shortcode($post->post_content, 'travel_map')) {
+                    $this->enqueue_frontend_scripts();
+                    return;
+                }
+            }
+        }
+        
+        if (is_singular()) {
+            global $post;
+            if ($post && has_shortcode($post->post_content, 'travel_map')) {
+                $this->enqueue_frontend_scripts();
+            }
+        }
+    }
+
+    /**
+     * 标记点缓存 Key
+     */
+    private function get_markers_cache_key($status) {
+        return 'travel_map_markers_' . $status;
+    }
+
+    /**
+     * 清理标记点缓存
+     */
+    private function clear_markers_cache() {
+        if (self::$markers_cache_cleared) {
+            return;
+        }
+        self::$markers_cache_cleared = true;
+        foreach (array('all', 'visited', 'want_to_go', 'planned') as $status) {
+            delete_transient($this->get_markers_cache_key($status));
+        }
     }
     
     /**
@@ -264,28 +322,20 @@ class TravelMapPlugin {
         $script_dependencies = array();
         
         if (!empty($api_key)) {
-            // 先加载安全密钥配置脚本
-            if (!empty($security_key)) {
-                wp_register_script(
-                    'amap-security-config',
-                    '',
-                    array(),
-                    TRAVEL_MAP_VERSION,
-                    false
-                );
-                wp_enqueue_script('amap-security-config');
-                wp_add_inline_script('amap-security-config', "window._AMapSecurityConfig = { securityJsCode: '{$security_key}' };");
-                $script_dependencies[] = 'amap-security-config';
-            }
-            
-            // 加载高德地图 API
+            // 加载高德地图 API（底部加载，支持按需加载）
             wp_enqueue_script(
                 'amap-api',
                 "https://webapi.amap.com/maps?v=2.0&key={$api_key}",
                 $script_dependencies,
                 TRAVEL_MAP_VERSION,
-                false  // 在头部加载
+                true
             );
+            
+            if (!empty($security_key)) {
+                $security_script = "window._AMapSecurityConfig = { securityJsCode: '{$security_key}' };";
+                wp_add_inline_script('amap-api', $security_script, 'before');
+            }
+            
             // 添加高德地图API作为依赖
             $script_dependencies[] = 'amap-api';
         }
@@ -295,8 +345,17 @@ class TravelMapPlugin {
             'travel-map-frontend',
             TRAVEL_MAP_PLUGIN_URL . 'assets/js/travel-map.js',
             $script_dependencies,
-            TRAVEL_MAP_VERSION . '.' . time(),
-            false  // 在头部加载
+            $this->get_asset_version('assets/js/travel-map.js'),
+            true
+        );
+        
+        // 短代码初始化脚本
+        wp_enqueue_script(
+            'travel-map-shortcode-init',
+            TRAVEL_MAP_PLUGIN_URL . 'assets/js/travel-map-shortcode-init.js',
+            array('travel-map-frontend'),
+            $this->get_asset_version('assets/js/travel-map-shortcode-init.js'),
+            true
         );
         
         // 加载插件样式
@@ -304,7 +363,7 @@ class TravelMapPlugin {
             'travel-map-frontend',
             TRAVEL_MAP_PLUGIN_URL . 'assets/css/travel-map.css',
             array(),
-            TRAVEL_MAP_VERSION
+            $this->get_asset_version('assets/css/travel-map.css')
         );
         
         // 本地化脚本
@@ -320,6 +379,18 @@ class TravelMapPlugin {
             'debug' => defined('WP_DEBUG') && WP_DEBUG
         ));
         
+        wp_localize_script('travel-map-shortcode-init', 'travelMapShortcode', array(
+            'i18n' => array(
+                'mapInitFailed' => __('地图初始化失败', TRAVEL_MAP_TEXT_DOMAIN),
+                'mapScriptMissing' => __('地图脚本加载失败', TRAVEL_MAP_TEXT_DOMAIN),
+                'possibleFix' => __('可能的解决方案：', TRAVEL_MAP_TEXT_DOMAIN),
+                'fixNetwork' => __('检查网络连接是否正常', TRAVEL_MAP_TEXT_DOMAIN),
+                'fixApiKey' => __('确认高德地图API密钥配置正确', TRAVEL_MAP_TEXT_DOMAIN),
+                'fixReload' => __('刷新页面重试', TRAVEL_MAP_TEXT_DOMAIN),
+                'reload' => __('刷新页面', TRAVEL_MAP_TEXT_DOMAIN)
+            )
+        ));
+        
         // 标记为已加载
         self::$frontend_scripts_loaded = true;
     }
@@ -333,26 +404,15 @@ class TravelMapPlugin {
             return;
         }
         
+        $is_settings_page = ($hook === 'toplevel_page_travel-map' || $hook === 'travel-map_page_travel-map');
+        $is_markers_page = ($hook === 'travel-map_page_travel-map-markers');
+        
         $api_key = get_option('travel_map_api_key', '');
         $security_key = get_option('travel_map_security_key', '');
         
         $dependencies = array('jquery');
         
         if (!empty($api_key)) {
-            // 先加载安全密钥配置脚本
-            if (!empty($security_key)) {
-                wp_register_script(
-                    'amap-security-config-admin',
-                    '',
-                    array(),
-                    TRAVEL_MAP_VERSION,
-                    false
-                );
-                wp_enqueue_script('amap-security-config-admin');
-                wp_add_inline_script('amap-security-config-admin', "window._AMapSecurityConfig = { securityJsCode: '{$security_key}' };");
-                $dependencies[] = 'amap-security-config-admin';
-            }
-            
             wp_enqueue_script(
                 'amap-api',
                 "https://webapi.amap.com/maps?v=2.0&key={$api_key}",
@@ -360,6 +420,11 @@ class TravelMapPlugin {
                 TRAVEL_MAP_VERSION,
                 true
             );
+            
+            if (!empty($security_key)) {
+                $security_script = "window._AMapSecurityConfig = { securityJsCode: '{$security_key}' };";
+                wp_add_inline_script('amap-api', $security_script, 'before');
+            }
             $dependencies[] = 'amap-api';
         }
         
@@ -367,7 +432,7 @@ class TravelMapPlugin {
             'travel-map-admin',
             TRAVEL_MAP_PLUGIN_URL . 'assets/js/travel-map-admin.js',
             $dependencies,
-            TRAVEL_MAP_VERSION,
+            $this->get_asset_version('assets/js/travel-map-admin.js'),
             true
         );
         
@@ -375,7 +440,7 @@ class TravelMapPlugin {
             'travel-map-admin',
             TRAVEL_MAP_PLUGIN_URL . 'assets/css/travel-map-admin.css',
             array(),
-            TRAVEL_MAP_VERSION
+            $this->get_asset_version('assets/css/travel-map-admin.css')
         );
         
         // 本地化管理员脚本
@@ -384,6 +449,83 @@ class TravelMapPlugin {
             'nonce' => wp_create_nonce('travel_map_nonce'),
             'apiKey' => $api_key
         ));
+        
+        if ($is_settings_page) {
+            wp_enqueue_script(
+                'travel-map-settings',
+                TRAVEL_MAP_PLUGIN_URL . 'assets/js/travel-map-settings.js',
+                array('jquery'),
+                $this->get_asset_version('assets/js/travel-map-settings.js'),
+                true
+            );
+            
+            wp_localize_script('travel-map-settings', 'travelMapSettings', array(
+                'i18n' => array(
+                    'copySuccess' => __('✓ 代码已复制到剪贴板', TRAVEL_MAP_TEXT_DOMAIN),
+                    'copyError' => __('✗ 复制失败，请手动复制', TRAVEL_MAP_TEXT_DOMAIN)
+                )
+            ));
+        }
+        
+        if ($is_markers_page) {
+            wp_enqueue_style(
+                'travel-map-coordinates',
+                TRAVEL_MAP_PLUGIN_URL . 'assets/css/travel-map-coordinates.css',
+                array(),
+                $this->get_asset_version('assets/css/travel-map-coordinates.css')
+            );
+            
+            $coordinates_deps = array('jquery');
+            if (!empty($api_key)) {
+                $coordinates_deps[] = 'amap-api';
+            }
+            wp_enqueue_script(
+                'travel-map-coordinates',
+                TRAVEL_MAP_PLUGIN_URL . 'assets/js/travel-map-coordinates.js',
+                $coordinates_deps,
+                $this->get_asset_version('assets/js/travel-map-coordinates.js'),
+                true
+            );
+            
+            wp_localize_script('travel-map-coordinates', 'travelMapCoordinates', array(
+                'ajaxurl' => admin_url('admin-ajax.php'),
+                'nonce' => wp_create_nonce('travel_map_nonce'),
+                'defaults' => array(
+                    'lng' => 116.4074,
+                    'lat' => 39.9042
+                ),
+                'i18n' => array(
+                    'noData' => __('暂无数据', TRAVEL_MAP_TEXT_DOMAIN),
+                    'none' => __('无', TRAVEL_MAP_TEXT_DOMAIN),
+                    'saving' => __('保存中...', TRAVEL_MAP_TEXT_DOMAIN),
+                    'saveSuccess' => __('保存成功！', TRAVEL_MAP_TEXT_DOMAIN),
+                    'saveFailed' => __('保存失败：', TRAVEL_MAP_TEXT_DOMAIN),
+                    'unknownError' => __('未知错误', TRAVEL_MAP_TEXT_DOMAIN),
+                    'networkError' => __('网络请求失败', TRAVEL_MAP_TEXT_DOMAIN),
+                    'loadEditSuccess' => __('已加载编辑数据', TRAVEL_MAP_TEXT_DOMAIN),
+                    'loadEditFailed' => __('获取数据失败', TRAVEL_MAP_TEXT_DOMAIN),
+                    'fetchFailed' => __('网络请求失败', TRAVEL_MAP_TEXT_DOMAIN),
+                    'selectToDelete' => __('请选择要删除的标记点', TRAVEL_MAP_TEXT_DOMAIN),
+                    'confirmBulkDelete' => __('确定要删除选中的 %d 个标记点吗？', TRAVEL_MAP_TEXT_DOMAIN),
+                    'deleteSuccess' => __('删除成功', TRAVEL_MAP_TEXT_DOMAIN),
+                    'deleteFailed' => __('删除失败：', TRAVEL_MAP_TEXT_DOMAIN),
+                    'importSuccess' => __('导入成功', TRAVEL_MAP_TEXT_DOMAIN),
+                    'importFailed' => __('导入失败：', TRAVEL_MAP_TEXT_DOMAIN),
+                    'apiKeyMissing' => __('请先配置API密钥并刷新页面', TRAVEL_MAP_TEXT_DOMAIN),
+                    'formTitleAdd' => __('添加新地点', TRAVEL_MAP_TEXT_DOMAIN),
+                    'formTitleEdit' => __('编辑地点', TRAVEL_MAP_TEXT_DOMAIN),
+                    'submitAdd' => __('添加坐标', TRAVEL_MAP_TEXT_DOMAIN),
+                    'submitUpdate' => __('更新坐标', TRAVEL_MAP_TEXT_DOMAIN),
+                    'countFormat' => __('%d 个地点', TRAVEL_MAP_TEXT_DOMAIN),
+                    'edit' => __('编辑', TRAVEL_MAP_TEXT_DOMAIN),
+                    'statusLabels' => array(
+                        'visited' => __('已去', TRAVEL_MAP_TEXT_DOMAIN),
+                        'want_to_go' => __('想去', TRAVEL_MAP_TEXT_DOMAIN),
+                        'planned' => __('计划', TRAVEL_MAP_TEXT_DOMAIN)
+                    )
+                )
+            ));
+        }
     }
     
     /**
@@ -392,6 +534,11 @@ class TravelMapPlugin {
     public function render_map_shortcode($atts) {
         // 确保前端脚本已加载
         $this->enqueue_frontend_scripts();
+        
+        // 如果短代码在 wp_head 之后渲染，确保样式仍然输出
+        if (did_action('wp_head') && !wp_style_is('travel-map-frontend', 'done')) {
+            wp_print_styles('travel-map-frontend');
+        }
         
         $atts = shortcode_atts(array(
             'width' => '100%',
@@ -408,6 +555,22 @@ class TravelMapPlugin {
         }
         
         $map_id = 'travel-map-' . uniqid();
+        
+        static $schema_added = false;
+        if (!$schema_added) {
+            $schema_data = array(
+                '@context' => 'https://schema.org',
+                '@type' => 'Map',
+                'name' => get_the_title() . ' - ' . __('旅行地图', TRAVEL_MAP_TEXT_DOMAIN),
+                'description' => __('互动式旅行地图，展示已去、想去和计划的旅行目的地', TRAVEL_MAP_TEXT_DOMAIN),
+                'url' => get_permalink(),
+                'mapType' => 'InteractiveMap'
+            );
+            add_action('wp_footer', function() use ($schema_data) {
+                echo '<script type="application/ld+json">' . wp_json_encode($schema_data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . '</script>';
+            });
+            $schema_added = true;
+        }
         
         ob_start();
         include TRAVEL_MAP_PLUGIN_PATH . 'templates/map-shortcode.php';
@@ -426,7 +589,8 @@ class TravelMapPlugin {
         check_ajax_referer('travel_map_nonce', 'nonce');
         
         $status = sanitize_text_field($_POST['status'] ?? 'all');
-        $markers = $this->get_markers_by_status($status);
+        $search = sanitize_text_field($_POST['search'] ?? '');
+        $markers = $this->get_markers_by_status($status, $search);
         
         wp_send_json_success($markers);
     }
@@ -697,6 +861,8 @@ class TravelMapPlugin {
             }
         }
         
+        $this->clear_markers_cache();
+        
         wp_send_json_success(array(
             'message' => sprintf(__('已更新 %d 个标记点状态', TRAVEL_MAP_TEXT_DOMAIN), $updated_count),
             'updated_count' => $updated_count
@@ -806,34 +972,38 @@ class TravelMapPlugin {
         if (!empty($api_key)) {
             $security_key = get_option('travel_map_security_key', '');
             
-            // 先加载安全密钥配置脚本
-            if (!empty($security_key)) {
-                wp_register_script(
-                    'amap-security-config-metabox',
-                    '',
-                    array(),
-                    TRAVEL_MAP_VERSION,
-                    false
-                );
-                wp_enqueue_script('amap-security-config-metabox');
-                wp_add_inline_script('amap-security-config-metabox', "window._AMapSecurityConfig = { securityJsCode: '{$security_key}' };");
-            }
-            
             // 加载高德地图API - 在头部加载以确保可用性
             wp_enqueue_script(
                 'amap-api-meta-box',
                 "https://webapi.amap.com/maps?v=2.0&key={$api_key}",
-                !empty($security_key) ? array('amap-security-config-metabox') : array(),
+                array(),
                 TRAVEL_MAP_VERSION,
                 false  // 在头部加载
             );
+            
+            if (!empty($security_key)) {
+                $security_script = "window._AMapSecurityConfig = { securityJsCode: '{$security_key}' };";
+                wp_add_inline_script('amap-api-meta-box', $security_script, 'before');
+            }
         }
         
         // 确保jQuery已加载
-        wp_enqueue_script('jquery');
+        wp_enqueue_style(
+            'travel-map-meta-box',
+            TRAVEL_MAP_PLUGIN_URL . 'assets/css/travel-map-meta-box.css',
+            array(),
+            $this->get_asset_version('assets/css/travel-map-meta-box.css')
+        );
         
-        // 本地化配置给JavaScript使用
-        wp_localize_script('jquery', 'travelMapConfig', array(
+        wp_enqueue_script(
+            'travel-map-meta-box',
+            TRAVEL_MAP_PLUGIN_URL . 'assets/js/travel-map-meta-box.js',
+            array('jquery'),
+            $this->get_asset_version('assets/js/travel-map-meta-box.js'),
+            true
+        );
+        
+        wp_localize_script('travel-map-meta-box', 'travelMapConfig', array(
             'apiKey' => $api_key,
             'securityKey' => get_option('travel_map_security_key', ''),
             'ajaxurl' => admin_url('admin-ajax.php'),
@@ -991,16 +1161,124 @@ class TravelMapPlugin {
     /**
      * 根据状态获取标记点
      */
-    private function get_markers_by_status($status = 'all') {
+    private function get_markers_by_status($status = 'all', $search = '') {
         global $wpdb;
         $table_markers = $wpdb->prefix . 'travel_map_markers';
+        $table_post_markers = $wpdb->prefix . 'travel_map_post_markers';
+        $table_posts = $wpdb->posts;
         
-        if ($status === 'all') {
-            $sql = "SELECT * FROM $table_markers ORDER BY created_at DESC";
-            $markers = $wpdb->get_results($sql);
-        } else {
-            $sql = $wpdb->prepare("SELECT * FROM $table_markers WHERE status = %s ORDER BY created_at DESC", $status);
-            $markers = $wpdb->get_results($sql);
+        $search = trim($search);
+        $use_cache = ($search === '');
+        $cache_key = '';
+        
+        if ($use_cache) {
+            $cache_key = $this->get_markers_cache_key($status);
+            $cached = get_transient($cache_key);
+            if ($cached !== false) {
+                return $cached;
+            }
+        }
+        
+        $conditions = array();
+        $params = array();
+        
+        if ($status !== 'all') {
+            $conditions[] = 'm.status = %s';
+            $params[] = $status;
+        }
+        
+        if (!empty($search)) {
+            $like = '%' . $wpdb->esc_like($search) . '%';
+            $conditions[] = "(m.title LIKE %s OR m.description LIKE %s OR p.post_title LIKE %s OR EXISTS (
+                SELECT 1 FROM $table_post_markers pm2
+                INNER JOIN $table_posts p2 ON pm2.post_id = p2.ID
+                WHERE pm2.marker_id = m.id AND p2.post_status = 'publish' AND p2.post_title LIKE %s
+            ))";
+            $params[] = $like;
+            $params[] = $like;
+            $params[] = $like;
+            $params[] = $like;
+        }
+        
+        $sql = "SELECT m.*, p.post_title 
+                FROM $table_markers m 
+                LEFT JOIN $table_posts p ON m.post_id = p.ID AND p.post_status = 'publish'";
+        
+        if (!empty($conditions)) {
+            $sql .= ' WHERE ' . implode(' AND ', $conditions);
+        }
+        
+        $sql .= ' ORDER BY m.created_at DESC';
+        
+        if (!empty($params)) {
+            $sql = $wpdb->prepare($sql, $params);
+        }
+        
+        $markers = $wpdb->get_results($sql);
+        
+        if (empty($markers)) {
+            return $markers;
+        }
+        
+        // 预加载关联文章标题（包含关联表）
+        $marker_ids = array_map('intval', wp_list_pluck($markers, 'id'));
+        $marker_to_post_ids = array();
+        $all_post_ids = array();
+        
+        foreach ($markers as $marker) {
+            $marker_to_post_ids[$marker->id] = array();
+            if (!empty($marker->post_id)) {
+                $marker_to_post_ids[$marker->id][$marker->post_id] = (int) $marker->post_id;
+                $all_post_ids[$marker->post_id] = (int) $marker->post_id;
+            }
+        }
+        
+        if (!empty($marker_ids)) {
+            $ids_placeholder = implode(',', array_fill(0, count($marker_ids), '%d'));
+            $related_rows = $wpdb->get_results(
+                $wpdb->prepare(
+                    "SELECT marker_id, post_id FROM $table_post_markers WHERE marker_id IN ($ids_placeholder)",
+                    $marker_ids
+                )
+            );
+            
+            foreach ($related_rows as $row) {
+                $mid = (int) $row->marker_id;
+                $pid = (int) $row->post_id;
+                if (!isset($marker_to_post_ids[$mid])) {
+                    $marker_to_post_ids[$mid] = array();
+                }
+                $marker_to_post_ids[$mid][$pid] = $pid;
+                $all_post_ids[$pid] = $pid;
+            }
+        }
+        
+        $post_titles_by_id = array();
+        if (!empty($all_post_ids)) {
+            $post_ids = array_values($all_post_ids);
+            $post_ids_placeholder = implode(',', array_fill(0, count($post_ids), '%d'));
+            $post_rows = $wpdb->get_results(
+                $wpdb->prepare(
+                    "SELECT ID, post_title FROM $table_posts WHERE ID IN ($post_ids_placeholder) AND post_status = 'publish'",
+                    $post_ids
+                )
+            );
+            
+            foreach ($post_rows as $post_row) {
+                $post_titles_by_id[(int) $post_row->ID] = $post_row->post_title;
+            }
+        }
+        
+        foreach ($markers as $marker) {
+            $post_titles = array();
+            $post_ids = $marker_to_post_ids[$marker->id] ?? array();
+            foreach ($post_ids as $pid) {
+                if (isset($post_titles_by_id[$pid])) {
+                    $post_titles[] = $post_titles_by_id[$pid];
+                }
+            }
+            $marker->post_titles = array_values($post_titles);
+            $marker->post_title = !empty($marker->post_titles) ? $marker->post_titles[0] : ($marker->post_title ?? null);
         }
         
         // 为每个标记点添加最新文章的特色图片
@@ -1009,6 +1287,10 @@ class TravelMapPlugin {
                 $featured_image = $this->get_marker_featured_image($marker);
                 $marker->featured_image = $featured_image;
             }
+        }
+        
+        if ($use_cache) {
+            set_transient($cache_key, $markers, 5 * MINUTE_IN_SECONDS);
         }
         
         return $markers;
@@ -1055,7 +1337,9 @@ class TravelMapPlugin {
         global $wpdb;
         $table_markers = $wpdb->prefix . 'travel_map_markers';
         
-        return $wpdb->insert($table_markers, $marker_data);
+        $result = $wpdb->insert($table_markers, $marker_data);
+        $this->clear_markers_cache();
+        return $result;
     }
     
     /**
@@ -1064,8 +1348,13 @@ class TravelMapPlugin {
     private function delete_marker($marker_id) {
         global $wpdb;
         $table_markers = $wpdb->prefix . 'travel_map_markers';
+        $table_post_markers = $wpdb->prefix . 'travel_map_post_markers';
         
-        return $wpdb->delete($table_markers, array('id' => $marker_id));
+        // 先清理关联表，避免遗留孤儿记录
+        $wpdb->delete($table_post_markers, array('marker_id' => $marker_id), array('%d'));
+        $result = $wpdb->delete($table_markers, array('id' => $marker_id), array('%d'));
+        $this->clear_markers_cache();
+        return $result;
     }
     
     /**
@@ -1182,6 +1471,7 @@ class TravelMapPlugin {
         }
         
         fclose($handle);
+        $this->clear_markers_cache();
         return $imported_count;
     }
     
@@ -1206,11 +1496,15 @@ class TravelMapPlugin {
         
         foreach ($data as $item) {
             if (isset($item['title'], $item['latitude'], $item['longitude'])) {
+                $status = isset($item['status']) ? sanitize_text_field($item['status']) : 'visited';
+                if (!in_array($status, array('visited', 'want_to_go', 'planned'), true)) {
+                    $status = 'visited';
+                }
                 $marker_data = array(
                     'title' => sanitize_text_field($item['title']),
                     'latitude' => floatval($item['latitude']),
                     'longitude' => floatval($item['longitude']),
-                    'status' => in_array($item['status'] ?? 'visited', array('visited', 'want_to_go', 'planned')) ? $item['status'] : 'visited',
+                    'status' => $status,
                     'description' => sanitize_textarea_field($item['description'] ?? ''),
                     'visit_date' => !empty($item['visit_date']) ? $item['visit_date'] : null,
                     'visit_count' => intval($item['visit_count'] ?? 1),
@@ -1224,7 +1518,7 @@ class TravelMapPlugin {
                 }
             }
         }
-        
+        $this->clear_markers_cache();
         return $imported_count;
     }
     
@@ -1352,8 +1646,9 @@ class TravelMapPlugin {
     private function update_marker($marker_id, $marker_data) {
         global $wpdb;
         $table_markers = $wpdb->prefix . 'travel_map_markers';
-        
-        return $wpdb->update($table_markers, $marker_data, array('id' => $marker_id));
+        $result = $wpdb->update($table_markers, $marker_data, array('id' => $marker_id));
+        $this->clear_markers_cache();
+        return $result;
     }
     
     /**
@@ -1381,9 +1676,18 @@ class TravelMapPlugin {
     private function update_post_marker_associations($post_id, $marker_ids) {
         global $wpdb;
         $table_post_markers = $wpdb->prefix . 'travel_map_post_markers';
+        $table_markers = $wpdb->prefix . 'travel_map_markers';
         
         // 先删除现有关联
         $wpdb->delete($table_post_markers, array('post_id' => $post_id));
+        
+        // 清理之前设置在标记点上的主关联，避免遗留错误关联
+        $wpdb->query(
+            $wpdb->prepare(
+                "UPDATE $table_markers SET post_id = NULL WHERE post_id = %d",
+                $post_id
+            )
+        );
         
         // 添加新关联
         foreach ($marker_ids as $marker_id) {
@@ -1407,8 +1711,23 @@ class TravelMapPlugin {
                 array('id' => $main_marker_id)
             );
         }
+        
+        $this->clear_markers_cache();
     }
 }
 
 // 初始化插件
 TravelMapPlugin::get_instance();
+
+/**
+ * 供主题/模板主动调用的资源加载函数
+ */
+if (!function_exists('travel_map_enqueue_assets')) {
+    function travel_map_enqueue_assets() {
+        TravelMapPlugin::get_instance()->enqueue_frontend_scripts();
+        
+        if (did_action('wp_head') && !wp_style_is('travel-map-frontend', 'done')) {
+            wp_print_styles('travel-map-frontend');
+        }
+    }
+}

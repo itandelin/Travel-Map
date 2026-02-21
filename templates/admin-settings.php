@@ -143,8 +143,7 @@ if (!defined('ABSPATH')) {
                     id="visited_color" 
                     name="visited_color" 
                     value="<?php echo esc_attr(get_option('travel_map_visited_color', '#FF6B35')); ?>" 
-                    class="travel-map-form-input"
-                    style="width: 60px; height: 40px; padding: 4px;"
+                    class="travel-map-form-input travel-map-color-picker"
                 >
             </div>
             
@@ -157,8 +156,7 @@ if (!defined('ABSPATH')) {
                     id="want_to_go_color" 
                     name="want_to_go_color" 
                     value="<?php echo esc_attr(get_option('travel_map_want_to_go_color', '#3B82F6')); ?>" 
-                    class="travel-map-form-input"
-                    style="width: 60px; height: 40px; padding: 4px;"
+                    class="travel-map-form-input travel-map-color-picker"
                 >
             </div>
             
@@ -171,8 +169,7 @@ if (!defined('ABSPATH')) {
                     id="planned_color" 
                     name="planned_color" 
                     value="<?php echo esc_attr(get_option('travel_map_planned_color', '#10B981')); ?>" 
-                    class="travel-map-form-input"
-                    style="width: 60px; height: 40px; padding: 4px;"
+                    class="travel-map-form-input travel-map-color-picker"
                 >
             </div>
         </div>
@@ -405,112 +402,3 @@ if (!defined('ABSPATH')) {
         </div>
     </div>
 </div>
-
-<script>
-// API 密钥验证
-jQuery(document).ready(function($) {
-    $('#travel_map_api_key').on('blur', function() {
-        const apiKey = $(this).val().trim();
-        if (apiKey) {
-            $('.travel-map-api-status').remove();
-            $(this).after('<span class="travel-map-api-status checking">验证中...</span>');
-            
-            setTimeout(function() {
-                $('.travel-map-api-status').remove();
-                if (apiKey.length > 20) {
-                    $('#travel_map_api_key').after('<span class="travel-map-api-status valid">✓ API密钥格式正确</span>');
-                } else {
-                    $('#travel_map_api_key').after('<span class="travel-map-api-status invalid">✗ API密钥格式不正确</span>');
-                }
-            }, 1000);
-        }
-    });
-    
-    // 使用事件委托处理复制按钮点击
-    $(document).on('click', '.travel-map-copy-btn', function(e) {
-        e.preventDefault();
-        const textToCopy = $(this).attr('data-copy');
-        if (textToCopy) {
-            copyToClipboard(textToCopy);
-        }
-    });
-});
-
-// 复制代码功能
-function copyToClipboard(text) {
-    if (navigator.clipboard && window.isSecureContext) {
-        // 使用现代 Clipboard API
-        navigator.clipboard.writeText(text).then(function() {
-            showCopySuccess();
-        }).catch(function(err) {
-            fallbackCopyTextToClipboard(text);
-        });
-    } else {
-        // 回退方案
-        fallbackCopyTextToClipboard(text);
-    }
-}
-
-function fallbackCopyTextToClipboard(text) {
-    var textArea = document.createElement("textarea");
-    textArea.value = text;
-    textArea.style.position = "fixed";
-    textArea.style.top = "0";
-    textArea.style.left = "0";
-    textArea.style.width = "2em";
-    textArea.style.height = "2em";
-    textArea.style.padding = "0";
-    textArea.style.border = "none";
-    textArea.style.outline = "none";
-    textArea.style.boxShadow = "none";
-    textArea.style.background = "transparent";
-    document.body.appendChild(textArea);
-    textArea.focus();
-    textArea.select();
-    
-    try {
-        var successful = document.execCommand('copy');
-        if (successful) {
-            showCopySuccess();
-        } else {
-            showCopyError();
-        }
-    } catch (err) {
-        showCopyError();
-    }
-    
-    document.body.removeChild(textArea);
-}
-
-function showCopySuccess() {
-    // 删除现有的提示
-    jQuery('.travel-map-copy-message').remove();
-    
-    // 显示成功提示
-    var message = jQuery('<div class="travel-map-copy-message success">✓ 代码已复制到剪贴板</div>');
-    jQuery('body').append(message);
-    
-    // 2秒后自动消失
-    setTimeout(function() {
-        message.fadeOut(function() {
-            message.remove();
-        });
-    }, 2000);
-}
-
-function showCopyError() {
-    // 删除现有的提示
-    jQuery('.travel-map-copy-message').remove();
-    
-    // 显示错误提示
-    var message = jQuery('<div class="travel-map-copy-message error">✗ 复制失败，请手动复制</div>');
-    jQuery('body').append(message);
-    
-    // 3秒后自动消失
-    setTimeout(function() {
-        message.fadeOut(function() {
-            message.remove();
-        });
-    }, 3000);
-}
-</script>
