@@ -143,6 +143,24 @@ WordPress Travel Map 是一个专为旅行博主设计的地图插件，基于�
 [travel_map]
 ```
 
+### 模板用法说明（主题/小工具）
+
+如果短代码不是放在文章/页面正文里，而是放在主题模板或小工具中，建议在渲染短代码前显式加载资源，以确保样式与脚本可用：
+
+```
+<?php
+if (function_exists('travel_map_enqueue_assets')) {
+    travel_map_enqueue_assets();
+}
+?>
+```
+
+然后输出短代码即可：
+
+```
+<?php echo do_shortcode('[travel_map]'); ?>
+```
+
 ### 完整参数列表
 
 ```

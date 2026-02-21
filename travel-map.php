@@ -365,6 +365,10 @@ class TravelMapPlugin {
             array(),
             $this->get_asset_version('assets/css/travel-map.css')
         );
+
+        // 关键样式兜底，避免主题未加载 head 时样式缺失
+        $critical_css = '.travel-map-container{width:100%;height:var(--travel-map-height,500px);position:relative;overflow:hidden;background:#f5f5f5}.travel-map-wrapper,.travel-map{width:100%;height:100%;min-height:300px}.travel-map-loading{position:absolute;top:0;right:0;bottom:0;left:0;display:flex;align-items:center;justify-content:center;flex-direction:column;background:#f5f5f5;z-index:1000}.travel-map-controls{position:absolute;top:12px;right:12px;z-index:1000;display:flex;flex-direction:column;gap:8px}.travel-map-control-btn{width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid #d1d5db;border-radius:6px;padding:0}.travel-map-control-btn svg{width:20px;height:20px;display:block}.travel-map-accessibility{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}';
+        wp_add_inline_style('travel-map-frontend', $critical_css);
         
         // 本地化脚本
         wp_localize_script('travel-map-frontend', 'travelMapAjax', array(
@@ -379,7 +383,22 @@ class TravelMapPlugin {
             'debug' => defined('WP_DEBUG') && WP_DEBUG
         ));
         
+        $api_script_url = '';
+        if (!empty($api_key)) {
+            $api_script_url = "https://webapi.amap.com/maps?v=2.0&key={$api_key}";
+        }
+
+        $style_url = add_query_arg(
+            'ver',
+            $this->get_asset_version('assets/css/travel-map.css'),
+            TRAVEL_MAP_PLUGIN_URL . 'assets/css/travel-map.css'
+        );
+
         wp_localize_script('travel-map-shortcode-init', 'travelMapShortcode', array(
+            'apiScript' => $api_script_url,
+            'frontendScript' => TRAVEL_MAP_PLUGIN_URL . 'assets/js/travel-map.js',
+            'styleUrl' => $style_url,
+            'securityKey' => $security_key,
             'i18n' => array(
                 'mapInitFailed' => __('地图初始化失败', TRAVEL_MAP_TEXT_DOMAIN),
                 'mapScriptMissing' => __('地图脚本加载失败', TRAVEL_MAP_TEXT_DOMAIN),
@@ -535,9 +554,20 @@ class TravelMapPlugin {
         // 确保前端脚本已加载
         $this->enqueue_frontend_scripts();
         
-        // 如果短代码在 wp_head 之后渲染，确保样式仍然输出
-        if (did_action('wp_head') && !wp_style_is('travel-map-frontend', 'done')) {
+        // 兜底输出样式，避免主题未正确调用 wp_head 导致样式缺失
+        if (!wp_style_is('travel-map-frontend', 'done')) {
             wp_print_styles('travel-map-frontend');
+        }
+        
+        // 兜底输出脚本，避免主题未正确调用 wp_head/wp_footer 导致脚本缺失
+        if (!wp_script_is('travel-map-shortcode-init', 'done')) {
+            $handles = array();
+            if (!empty(get_option('travel_map_api_key', ''))) {
+                $handles[] = 'amap-api';
+            }
+            $handles[] = 'travel-map-frontend';
+            $handles[] = 'travel-map-shortcode-init';
+            wp_print_scripts($handles);
         }
         
         $atts = shortcode_atts(array(

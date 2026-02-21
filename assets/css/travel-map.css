@@ -185,6 +185,8 @@ html.auto .travel-map-container {
 .travel-map-container {
     width: 100%;
     height: var(--travel-map-height, 500px);
+    --travel-map-control-size: 40px;
+    --travel-map-control-icon: 20px;
     position: relative;
     background: #f5f5f5;
     border-radius: 8px;
@@ -859,8 +861,8 @@ html.auto .travel-map-enhanced-popup .travel-map-popup-close:hover {
 }
 
 .travel-map-control-btn {
-    width: 40px;
-    height: 40px;
+    width: var(--travel-map-control-size);
+    height: var(--travel-map-control-size);
     background: #fff;
     border: 1px solid #d1d5db;
     border-radius: 6px;
@@ -870,6 +872,11 @@ html.auto .travel-map-enhanced-popup .travel-map-popup-close:hover {
     cursor: pointer;
     transition: all 0.2s ease;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 0;
+    font-size: 0;
+    line-height: 0;
+    -webkit-appearance: none;
+    appearance: none;
 }
 
 .travel-map-control-btn:hover {
@@ -878,8 +885,12 @@ html.auto .travel-map-enhanced-popup .travel-map-popup-close:hover {
 }
 
 .travel-map-control-btn svg {
-    width: 20px;
-    height: 20px;
+    width: var(--travel-map-control-icon);
+    height: var(--travel-map-control-icon);
+    min-width: var(--travel-map-control-icon);
+    min-height: var(--travel-map-control-icon);
+    display: block;
+    flex: 0 0 auto;
     color: #374151;
 }
 
@@ -1394,6 +1405,11 @@ html.auto .travel-map-custom-popup .info-item.description {
 
 /* 响应式设计 */
 @media (max-width: 768px) {
+    .travel-map-container {
+        --travel-map-control-size: 36px;
+        --travel-map-control-icon: 18px;
+    }
+
     .travel-map-filters {
         padding: 8px 12px;
         gap: 6px;
@@ -1423,13 +1439,13 @@ html.auto .travel-map-custom-popup .info-item.description {
     }
     
     .travel-map-control-btn {
-        width: 36px;
-        height: 36px;
+        width: var(--travel-map-control-size);
+        height: var(--travel-map-control-size);
     }
     
     .travel-map-control-btn svg {
-        width: 18px;
-        height: 18px;
+        width: var(--travel-map-control-icon);
+        height: var(--travel-map-control-icon);
     }
     
     .travel-map-popup-content {
@@ -1453,6 +1469,13 @@ html.auto .travel-map-custom-popup .info-item.description {
     
     .travel-map-error-icon {
         font-size: 36px;
+    }
+}
+
+/* iOS Safari 图标尺寸修正 */
+@supports (-webkit-touch-callout: none) {
+    .travel-map-container {
+        --travel-map-control-icon: 20px;
     }
 }
 
