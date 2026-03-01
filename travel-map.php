@@ -95,6 +95,8 @@ class TravelMapPlugin {
         add_action('wp_ajax_travel_map_bulk_status', array($this, 'ajax_bulk_status'));
         add_action('wp_ajax_travel_map_export', array($this, 'ajax_export'));
         add_action('wp_ajax_travel_map_import', array($this, 'ajax_import'));
+
+        add_action('rest_api_init', array($this, 'register_rest_routes'));
     }
     
     /**
@@ -373,6 +375,7 @@ class TravelMapPlugin {
         // 本地化脚本
         wp_localize_script('travel-map-frontend', 'travelMapAjax', array(
             'ajaxurl' => admin_url('admin-ajax.php'),
+            'restUrl' => esc_url_raw(rest_url('travel-map/v1/')),
             'nonce' => wp_create_nonce('travel_map_nonce'),
             'apiKey' => $api_key,
             'colors' => array(
@@ -608,6 +611,88 @@ class TravelMapPlugin {
     }
     
     /**
+     * 注册 REST 路由（公开只读）
+     */
+    public function register_rest_routes() {
+        register_rest_route('travel-map/v1', '/markers', array(
+            'methods' => WP_REST_Server::READABLE,
+            'callback' => array($this, 'rest_get_markers'),
+            'permission_callback' => '__return_true',
+            'args' => array(
+                'status' => array(
+                    'sanitize_callback' => 'sanitize_text_field',
+                    'default' => 'all'
+                ),
+                'search' => array(
+                    'sanitize_callback' => 'sanitize_text_field',
+                    'default' => ''
+                )
+            )
+        ));
+
+        register_rest_route('travel-map/v1', '/location-posts', array(
+            'methods' => WP_REST_Server::READABLE,
+            'callback' => array($this, 'rest_get_location_posts'),
+            'permission_callback' => '__return_true',
+            'args' => array(
+                'latitude' => array(
+                    'required' => true
+                ),
+                'longitude' => array(
+                    'required' => true
+                ),
+                'location_name' => array(
+                    'sanitize_callback' => 'sanitize_text_field',
+                    'default' => ''
+                )
+            )
+        ));
+    }
+
+    /**
+     * REST: 获取标记点
+     */
+    public function rest_get_markers($request) {
+        $status = sanitize_text_field((string) $request->get_param('status'));
+        $search = sanitize_text_field((string) $request->get_param('search'));
+        $markers = $this->get_markers_by_status($status ?: 'all', $search);
+
+        return rest_ensure_response(array(
+            'success' => true,
+            'data' => $markers
+        ));
+    }
+
+    /**
+     * REST: 获取地点相关文章
+     */
+    public function rest_get_location_posts($request) {
+        $latitude = floatval($request->get_param('latitude'));
+        $longitude = floatval($request->get_param('longitude'));
+        $location_name = sanitize_text_field((string) $request->get_param('location_name'));
+
+        return rest_ensure_response(array(
+            'success' => true,
+            'data' => $this->find_location_posts($latitude, $longitude, $location_name)
+        ));
+    }
+
+    /**
+     * 校验公开只读 AJAX 请求（对游客允许无 nonce，兼容缓存与服务器策略）
+     */
+    private function verify_public_read_ajax_request() {
+        $nonce = isset($_REQUEST['nonce']) ? sanitize_text_field(wp_unslash($_REQUEST['nonce'])) : '';
+
+        if ($nonce && wp_verify_nonce($nonce, 'travel_map_nonce')) {
+            return;
+        }
+
+        if (is_user_logged_in()) {
+            wp_send_json_error(__('安全验证失败', TRAVEL_MAP_TEXT_DOMAIN), 403);
+        }
+    }
+
+    /**
      * AJAX: 获取标记点
      */
     public function ajax_get_markers() {
@@ -615,8 +700,8 @@ class TravelMapPlugin {
         if (ob_get_level()) {
             ob_clean();
         }
-        
-        check_ajax_referer('travel_map_nonce', 'nonce');
+
+        $this->verify_public_read_ajax_request();
         
         $status = sanitize_text_field($_POST['status'] ?? 'all');
         $search = sanitize_text_field($_POST['search'] ?? '');
@@ -680,7 +765,7 @@ class TravelMapPlugin {
      * AJAX: 获取文章信息
      */
     public function ajax_get_post_info() {
-        check_ajax_referer('travel_map_nonce', 'nonce');
+        $this->verify_public_read_ajax_request();
         
         $post_id = intval($_POST['post_id']);
         $post = get_post($post_id);
@@ -704,76 +789,13 @@ class TravelMapPlugin {
      * AJAX: 获取地点相关的文章列表
      */
     public function ajax_get_location_posts() {
-        check_ajax_referer('travel_map_nonce', 'nonce');
-        
-        $latitude = floatval($_POST['latitude']);
-        $longitude = floatval($_POST['longitude']);
-        $location_name = sanitize_text_field($_POST['location_name']);
-        
-        // 根据坐标和地点名称找到对应的标记点
-        global $wpdb;
-        $table_markers = $wpdb->prefix . 'travel_map_markers';
-        $table_post_markers = $wpdb->prefix . 'travel_map_post_markers';
-        
-        // 首先尝试精确匹配坐标和地点名称
-        $marker = $wpdb->get_row($wpdb->prepare(
-            "SELECT * FROM $table_markers 
-            WHERE title = %s 
-            AND ABS(latitude - %f) < 0.0001 
-            AND ABS(longitude - %f) < 0.0001
-            LIMIT 1",
-            $location_name, $latitude, $longitude
-        ));
-        
-        $articles = array();
-        
-        if ($marker) {
-            // 获取直接关联的文章（post_id字段）
-            if ($marker->post_id) {
-                $post = get_post($marker->post_id);
-                if ($post && $post->post_status === 'publish') {
-                    $articles[] = array(
-                        'title' => $post->post_title,
-                        'excerpt' => wp_trim_words($post->post_excerpt ?: $post->post_content, 30),
-                        'permalink' => get_permalink($marker->post_id),
-                        'featured_image' => get_the_post_thumbnail_url($marker->post_id, 'medium'),
-                        'date' => get_the_date('Y-m-d', $marker->post_id)
-                    );
-                }
-            }
-            
-            // 获取通过关联表关联的文章
-            $related_posts = $wpdb->get_results($wpdb->prepare(
-                "SELECT post_id FROM $table_post_markers WHERE marker_id = %d",
-                $marker->id
-            ));
-            
-            foreach ($related_posts as $related_post) {
-                $post = get_post($related_post->post_id);
-                if ($post && $post->post_status === 'publish') {
-                    // 避免重复添加相同的文章
-                    $exists = false;
-                    foreach ($articles as $existing_article) {
-                        if ($existing_article['permalink'] === get_permalink($post->ID)) {
-                            $exists = true;
-                            break;
-                        }
-                    }
-                    
-                    if (!$exists) {
-                        $articles[] = array(
-                            'title' => $post->post_title,
-                            'excerpt' => wp_trim_words($post->post_excerpt ?: $post->post_content, 30),
-                            'permalink' => get_permalink($post->ID),
-                            'featured_image' => get_the_post_thumbnail_url($post->ID, 'medium'),
-                            'date' => get_the_date('Y-m-d', $post->ID)
-                        );
-                    }
-                }
-            }
-        }
-        
-        wp_send_json_success($articles);
+        $this->verify_public_read_ajax_request();
+
+        $latitude = floatval($_POST['latitude'] ?? 0);
+        $longitude = floatval($_POST['longitude'] ?? 0);
+        $location_name = sanitize_text_field($_POST['location_name'] ?? '');
+
+        wp_send_json_success($this->find_location_posts($latitude, $longitude, $location_name));
     }
     
     /**
@@ -1358,6 +1380,78 @@ class TravelMapPlugin {
         }
         
         return null;
+    }
+
+    /**
+     * 查询地点相关文章
+     */
+    private function find_location_posts($latitude, $longitude, $location_name) {
+        // 根据坐标和地点名称找到对应的标记点
+        global $wpdb;
+        $table_markers = $wpdb->prefix . 'travel_map_markers';
+        $table_post_markers = $wpdb->prefix . 'travel_map_post_markers';
+
+        // 首先尝试精确匹配坐标和地点名称
+        $marker = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM $table_markers
+            WHERE title = %s
+            AND ABS(latitude - %f) < 0.0001
+            AND ABS(longitude - %f) < 0.0001
+            LIMIT 1",
+            $location_name, $latitude, $longitude
+        ));
+
+        $articles = array();
+
+        if (!$marker) {
+            return $articles;
+        }
+
+        // 获取直接关联的文章（post_id字段）
+        if ($marker->post_id) {
+            $post = get_post($marker->post_id);
+            if ($post && $post->post_status === 'publish') {
+                $articles[] = array(
+                    'title' => $post->post_title,
+                    'excerpt' => wp_trim_words($post->post_excerpt ?: $post->post_content, 30),
+                    'permalink' => get_permalink($marker->post_id),
+                    'featured_image' => get_the_post_thumbnail_url($marker->post_id, 'medium'),
+                    'date' => get_the_date('Y-m-d', $marker->post_id)
+                );
+            }
+        }
+
+        // 获取通过关联表关联的文章
+        $related_posts = $wpdb->get_results($wpdb->prepare(
+            "SELECT post_id FROM $table_post_markers WHERE marker_id = %d",
+            $marker->id
+        ));
+
+        foreach ($related_posts as $related_post) {
+            $post = get_post($related_post->post_id);
+            if ($post && $post->post_status === 'publish') {
+                // 避免重复添加相同的文章
+                $exists = false;
+                foreach ($articles as $existing_article) {
+                    if ($existing_article['permalink'] === get_permalink($post->ID)) {
+                        $exists = true;
+                        break;
+                    }
+                }
+
+                if (!$exists) {
+                    $articles[] = array(
+                        'title' => $post->post_title,
+                        'excerpt' => wp_trim_words($post->post_excerpt ?: $post->post_content, 30),
+                        'permalink' => get_permalink($post->ID),
+                        'featured_image' => get_the_post_thumbnail_url($post->ID, 'medium'),
+                        'date' => get_the_date('Y-m-d', $post->ID)
+                    );
+                }
+            }
+        }
+
+        return $articles;
     }
     
     /**

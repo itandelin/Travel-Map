@@ -403,35 +403,110 @@
                 }
             }, true);
         }
-        
-        loadMarkers() {
-            // 使用原生XMLHttpRequest发送AJAX请求获取标记数据
-            const xhr = new XMLHttpRequest();
+
+        requestPublicData(action, payload, onSuccess, onError) {
+            const ajaxConfig = (typeof window.travelMapAjax === 'object' && window.travelMapAjax) ? window.travelMapAjax : {};
+            const ajaxurl = ajaxConfig.ajaxurl || '/wp-admin/admin-ajax.php';
+            const restBase = ajaxConfig.restUrl || '';
+            const nonce = ajaxConfig.nonce || '';
+
             const formData = new FormData();
-            formData.append('action', 'travel_map_get_markers');
-            formData.append('nonce', travelMapAjax.nonce);
-            formData.append('status', this.currentFilter);
-            
-            xhr.open('POST', travelMapAjax.ajaxurl, true);
-            xhr.onreadystatechange = () => {
-                if (xhr.readyState === 4) {
-                    if (xhr.status === 200) {
-                        try {
-                            const response = JSON.parse(xhr.responseText);
-                            if (response.success) {
-                                this.addMarkers(response.data);
-                            } else {
-                                this.showError('加载标记数据失败');
-                            }
-                        } catch (e) {
-                            this.showError('数据解析失败');
-                        }
-                    } else {
-                        this.showError('网络请求失败');
-                    }
+            formData.append('action', action);
+            if (nonce) {
+                formData.append('nonce', nonce);
+            }
+
+            Object.keys(payload || {}).forEach((key) => {
+                const value = payload[key];
+                if (value !== undefined && value !== null) {
+                    formData.append(key, value);
                 }
+            });
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', ajaxurl, true);
+            xhr.onreadystatechange = () => {
+                if (xhr.readyState !== 4) {
+                    return;
+                }
+
+                if (xhr.status === 200) {
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        if (response && response.success) {
+                            onSuccess(response.data);
+                            return;
+                        }
+                    } catch (e) {}
+                }
+
+                if ((xhr.status === 401 || xhr.status === 403 || xhr.status === 405) && restBase) {
+                    this.requestPublicDataViaRest(action, payload, onSuccess, onError);
+                    return;
+                }
+
+                onError();
             };
             xhr.send(formData);
+        }
+
+        requestPublicDataViaRest(action, payload, onSuccess, onError) {
+            const ajaxConfig = (typeof window.travelMapAjax === 'object' && window.travelMapAjax) ? window.travelMapAjax : {};
+            const restBaseRaw = ajaxConfig.restUrl || '';
+            const endpointMap = {
+                travel_map_get_markers: 'markers',
+                travel_map_get_location_posts: 'location-posts'
+            };
+
+            const endpoint = endpointMap[action];
+            if (!restBaseRaw || !endpoint) {
+                onError();
+                return;
+            }
+
+            const restBase = restBaseRaw.endsWith('/') ? restBaseRaw : restBaseRaw + '/';
+            const params = new URLSearchParams();
+            Object.keys(payload || {}).forEach((key) => {
+                const value = payload[key];
+                if (value !== undefined && value !== null && value !== '') {
+                    params.append(key, value);
+                }
+            });
+
+            const url = `${restBase}${endpoint}${params.toString() ? '?' + params.toString() : ''}`;
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', url, true);
+            xhr.onreadystatechange = () => {
+                if (xhr.readyState !== 4) {
+                    return;
+                }
+
+                if (xhr.status === 200) {
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        if (response && response.success) {
+                            onSuccess(response.data);
+                            return;
+                        }
+                    } catch (e) {}
+                }
+
+                onError();
+            };
+            xhr.send();
+        }
+        
+        loadMarkers() {
+            this.requestPublicData(
+                'travel_map_get_markers',
+                { status: this.currentFilter },
+                (data) => {
+                    this.addMarkers(Array.isArray(data) ? data : []);
+                },
+                () => {
+                    this.showError('加载标记数据失败');
+                }
+            );
         }
         
         addMarkers(markersData) {
@@ -789,35 +864,24 @@
         }
         
         showArticlePopup(markerData, pixel) {
-            // 获取该地点的所有文章
-            const xhr = new XMLHttpRequest();
-            const formData = new FormData();
-            formData.append('action', 'travel_map_get_location_posts');
-            formData.append('nonce', travelMapAjax.nonce);
-            formData.append('latitude', markerData.latitude);
-            formData.append('longitude', markerData.longitude);
-            formData.append('location_name', markerData.title);
-            
-            xhr.open('POST', travelMapAjax.ajaxurl, true);
-            xhr.onreadystatechange = () => {
-                if (xhr.readyState === 4) {
-                    if (xhr.status === 200) {
-                        try {
-                            const response = JSON.parse(xhr.responseText);
-                            if (response.success && response.data.length > 0) {
-                                this.renderArticlePopup(markerData, response.data, pixel);
-                            } else {
-                                this.showSimplePopup(markerData, pixel);
-                            }
-                        } catch (e) {
-                            this.showSimplePopup(markerData, pixel);
-                        }
+            this.requestPublicData(
+                'travel_map_get_location_posts',
+                {
+                    latitude: markerData.latitude,
+                    longitude: markerData.longitude,
+                    location_name: markerData.title
+                },
+                (data) => {
+                    if (Array.isArray(data) && data.length > 0) {
+                        this.renderArticlePopup(markerData, data, pixel);
                     } else {
                         this.showSimplePopup(markerData, pixel);
                     }
+                },
+                () => {
+                    this.showSimplePopup(markerData, pixel);
                 }
-            };
-            xhr.send(formData);
+            );
         }
         
         renderArticlePopup(markerData, articles, pixel) {
