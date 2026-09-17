@@ -21,9 +21,9 @@ if (!defined('ABSPATH')) {
             <?php
             $stats = array(
                 'total' => count($all_markers),
-                'visited' => 0,
-                'want_to_go' => 0,
-                'planned' => 0,
+                'done' => 0,
+                'wish' => 0,
+                'plan' => 0,
                 'selected' => count($associated_markers)
             );
             
@@ -46,16 +46,16 @@ if (!defined('ABSPATH')) {
                     <span>个</span>
                 </div>
                 <div class="travel-map-stat-item">
-                    <span style="color: #9a3412;">•</span>
-                    <span><?php echo $stats['visited']; ?> 已去</span>
+                    <span style="color: #c0580c;">•</span>
+                    <span><?php echo $stats['done']; ?> 已去</span>
                 </div>
                 <div class="travel-map-stat-item">
-                    <span style="color: #1e40af;">•</span>
-                    <span><?php echo $stats['want_to_go']; ?> 想去</span>
+                    <span style="color: #f9844a;">•</span>
+                    <span><?php echo $stats['wish']; ?> 想去</span>
                 </div>
                 <div class="travel-map-stat-item">
-                    <span style="color: #065f46;">•</span>
-                    <span><?php echo $stats['planned']; ?> 计划</span>
+                    <span style="color: #8e44ad;">•</span>
+                    <span><?php echo $stats['plan']; ?> 计划</span>
                 </div>
             </div>
             
@@ -76,13 +76,13 @@ if (!defined('ABSPATH')) {
                 <button type="button" class="travel-map-filter-btn active" data-filter="all">
                     <?php _e('全部', TRAVEL_MAP_TEXT_DOMAIN); ?>
                 </button>
-                <button type="button" class="travel-map-filter-btn" data-filter="visited">
+                <button type="button" class="travel-map-filter-btn" data-filter="done">
                     <?php _e('已去', TRAVEL_MAP_TEXT_DOMAIN); ?>
                 </button>
-                <button type="button" class="travel-map-filter-btn" data-filter="want_to_go">
+                <button type="button" class="travel-map-filter-btn" data-filter="wish">
                     <?php _e('想去', TRAVEL_MAP_TEXT_DOMAIN); ?>
                 </button>
-                <button type="button" class="travel-map-filter-btn" data-filter="planned">
+                <button type="button" class="travel-map-filter-btn" data-filter="plan">
                     <?php _e('计划', TRAVEL_MAP_TEXT_DOMAIN); ?>
                 </button>
             </div>
@@ -91,9 +91,9 @@ if (!defined('ABSPATH')) {
             <div class="travel-map-markers-grid" id="travel-map-markers-grid">
                 <?php 
                 $status_labels = array(
-                    'visited' => __('已去', TRAVEL_MAP_TEXT_DOMAIN),
-                    'want_to_go' => __('想去', TRAVEL_MAP_TEXT_DOMAIN),
-                    'planned' => __('计划', TRAVEL_MAP_TEXT_DOMAIN)
+                    'done' => __('已去', TRAVEL_MAP_TEXT_DOMAIN),
+                    'wish' => __('想去', TRAVEL_MAP_TEXT_DOMAIN),
+                    'plan' => __('计划', TRAVEL_MAP_TEXT_DOMAIN)
                 );
                 
                 foreach ($all_markers as $marker): 
@@ -157,6 +157,24 @@ if (!defined('ABSPATH')) {
                     class="travel-map-form-input"
                     placeholder="<?php _e('例如：巴黎埃菲尔铁塔', TRAVEL_MAP_TEXT_DOMAIN); ?>"
                 >
+                <p class="description" style="margin:4px 0 0;font-size:12px;color:#666;">
+                    <?php _e('提示：地图上方可按名称搜索地点并自动回填坐标', TRAVEL_MAP_TEXT_DOMAIN); ?>
+                </p>
+            </div>
+
+            <!-- 按名称搜索地点（高德 Autocomplete 选点） -->
+            <div class="travel-map-form-row" id="travel-map-place-search-row">
+                <label class="travel-map-form-label"><?php _e('按名称搜索地点', TRAVEL_MAP_TEXT_DOMAIN); ?></label>
+                <div class="travel-map-place-search-container">
+                    <input 
+                        type="text" 
+                        id="travel-map-place-search" 
+                        class="travel-map-form-input"
+                        placeholder="<?php _e('输入地点名，如：厦门', TRAVEL_MAP_TEXT_DOMAIN); ?>"
+                        autocomplete="off"
+                    >
+                    <div id="travel-map-place-search-results" class="travel-map-place-search-results" style="display:none;"></div>
+                </div>
             </div>
             
             <!-- 地图选择器 -->
@@ -206,13 +224,25 @@ if (!defined('ABSPATH')) {
                 </div>
             </div>
             
-            <div class="travel-map-form-row">
-                <label class="travel-map-form-label"><?php _e('旅行状态', TRAVEL_MAP_TEXT_DOMAIN); ?></label>
-                <select name="new_marker_status" class="travel-map-form-input">
-                    <option value="visited"><?php _e('已去', TRAVEL_MAP_TEXT_DOMAIN); ?></option>
-                    <option value="want_to_go"><?php _e('想去', TRAVEL_MAP_TEXT_DOMAIN); ?></option>
-                    <option value="planned"><?php _e('计划', TRAVEL_MAP_TEXT_DOMAIN); ?></option>
-                </select>
+            <div class="travel-map-form-row travel-map-row-split">
+                <div>
+                    <label class="travel-map-form-label"><?php _e('旅行状态', TRAVEL_MAP_TEXT_DOMAIN); ?></label>
+                    <select name="new_marker_status" class="travel-map-form-input">
+                        <option value="done"><?php _e('已去', TRAVEL_MAP_TEXT_DOMAIN); ?></option>
+                        <option value="wish"><?php _e('想去', TRAVEL_MAP_TEXT_DOMAIN); ?></option>
+                        <option value="plan"><?php _e('计划', TRAVEL_MAP_TEXT_DOMAIN); ?></option>
+                    </select>
+                </div>
+                <div>
+                    <label class="travel-map-form-label"><?php _e('国别 (ISO 代码)', TRAVEL_MAP_TEXT_DOMAIN); ?></label>
+                    <input 
+                        type="text" 
+                        name="new_marker_country" 
+                        class="travel-map-form-input"
+                        placeholder="CN 或 CN,HK"
+                        autocomplete="off"
+                    >
+                </div>
             </div>
             
             <div class="travel-map-form-row">

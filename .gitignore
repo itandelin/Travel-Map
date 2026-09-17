@@ -88,3 +88,7 @@ uploads/
 # ============================================
 *.bak
 *.backup
+.pi-glla/
+docs/
+.mimosa/
+.playwright-mcp/

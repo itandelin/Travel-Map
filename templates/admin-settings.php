@@ -11,7 +11,7 @@ if (!defined('ABSPATH')) {
 
 <div class="travel-map-admin-page">
     <div class="travel-map-admin-header">
-        <h1 class="travel-map-admin-title"><?php _e('Travel Map 设置', TRAVEL_MAP_TEXT_DOMAIN); ?></h1>
+        <h1 class="travel-map-admin-title"><?php _e('地图设置', TRAVEL_MAP_TEXT_DOMAIN); ?></h1>
         <p class="travel-map-admin-subtitle"><?php _e('配置高德地图API和基本显示选项', TRAVEL_MAP_TEXT_DOMAIN); ?></p>
     </div>
 
@@ -125,52 +125,130 @@ if (!defined('ABSPATH')) {
                     <span><?php _e('显示筛选标签栏', TRAVEL_MAP_TEXT_DOMAIN); ?></span>
                 </label>
                 <p class="travel-map-form-help">
-                    <?php _e('在地图上方显示"全部"、"已去"、"想去"、"计划"筛选标签', TRAVEL_MAP_TEXT_DOMAIN); ?>
+                    <?php _e('在地图上方显示"全部"、"已去"、"想去"、"计划"筛选标签（数量为 0 的状态自动隐藏）', TRAVEL_MAP_TEXT_DOMAIN); ?>
                 </p>
+            </div>
+            
+            <div class="travel-map-form-row">
+                <label class="travel-map-form-checkbox">
+                    <input type="checkbox" name="auto_zoom" value="1" <?php checked(get_option('travel_map_auto_zoom', true)); ?>>
+                    <span><?php _e('自适应缩放', TRAVEL_MAP_TEXT_DOMAIN); ?></span>
+                </label>
+                <p class="travel-map-form-help">
+                    <?php _e('开启后地图加载与筛选切换时自动调整视野包含全部标记点；关闭则固定使用默认中心与缩放', TRAVEL_MAP_TEXT_DOMAIN); ?>
+                </p>
+            </div>
+            
+            <div class="travel-map-form-row">
+                <label class="travel-map-form-checkbox">
+                    <input type="checkbox" name="highlight_country" value="1" <?php checked(get_option('travel_map_highlight_country', true)); ?>>
+                    <span><?php _e('高亮已去国家', TRAVEL_MAP_TEXT_DOMAIN); ?></span>
+                </label>
+                <p class="travel-map-form-help">
+                    <?php _e('将"已去"标记涉及的国家在地图上整片填绿（需要标记已填写国别字段）', TRAVEL_MAP_TEXT_DOMAIN); ?>
+                </p>
+            </div>
+            
+            <div class="travel-map-form-row">
+                <label class="travel-map-form-checkbox">
+                    <input type="checkbox" name="show_yearly_stats" value="1" <?php checked(get_option('travel_map_show_yearly_stats', true)); ?>>
+                    <span><?php _e('显示年度统计面板', TRAVEL_MAP_TEXT_DOMAIN); ?></span>
+                </label>
+            </div>
+            
+            <div class="travel-map-form-row">
+                <label class="travel-map-form-checkbox">
+                    <input type="checkbox" name="show_type_stats" value="1" <?php checked(get_option('travel_map_show_type_stats', true)); ?>>
+                    <span><?php _e('显示状态统计面板', TRAVEL_MAP_TEXT_DOMAIN); ?></span>
+                </label>
             </div>
         </div>
 
-        <!-- 标记样式配置 -->
+        <!-- 聚合与视野 -->
         <div class="travel-map-form-section">
-            <h2 class="travel-map-section-title"><?php _e('标记样式配置', TRAVEL_MAP_TEXT_DOMAIN); ?></h2>
+            <h2 class="travel-map-section-title"><?php _e('聚合与视野', TRAVEL_MAP_TEXT_DOMAIN); ?></h2>
             
             <div class="travel-map-form-row">
-                <label for="visited_color" class="travel-map-form-label">
-                    <?php _e('已去地点颜色', TRAVEL_MAP_TEXT_DOMAIN); ?>
+                <label for="cluster_radius" class="travel-map-form-label">
+                    <?php _e('聚合半径', TRAVEL_MAP_TEXT_DOMAIN); ?>
                 </label>
                 <input 
-                    type="color" 
-                    id="visited_color" 
-                    name="visited_color" 
-                    value="<?php echo esc_attr(get_option('travel_map_visited_color', '#FF6B35')); ?>" 
-                    class="travel-map-form-input travel-map-color-picker"
+                    type="number" 
+                    id="cluster_radius" 
+                    name="cluster_radius" 
+                    value="<?php echo esc_attr(get_option('travel_map_cluster_radius', 40)); ?>" 
+                    class="travel-map-form-input"
+                    min="20" max="200"
                 >
+                <p class="travel-map-form-help">
+                    <?php _e('像素。数值越大越容易合并成聚合气泡（默认 40）', TRAVEL_MAP_TEXT_DOMAIN); ?>
+                </p>
             </div>
             
             <div class="travel-map-form-row">
-                <label for="want_to_go_color" class="travel-map-form-label">
-                    <?php _e('想去地点颜色', TRAVEL_MAP_TEXT_DOMAIN); ?>
+                <label for="cluster_limit" class="travel-map-form-label">
+                    <?php _e('聚合数字上限', TRAVEL_MAP_TEXT_DOMAIN); ?>
                 </label>
                 <input 
-                    type="color" 
-                    id="want_to_go_color" 
-                    name="want_to_go_color" 
-                    value="<?php echo esc_attr(get_option('travel_map_want_to_go_color', '#3B82F6')); ?>" 
-                    class="travel-map-form-input travel-map-color-picker"
+                    type="number" 
+                    id="cluster_limit" 
+                    name="cluster_limit" 
+                    value="<?php echo esc_attr(get_option('travel_map_cluster_limit', 9)); ?>" 
+                    class="travel-map-form-input"
+                    min="1" max="999"
                 >
+                <p class="travel-map-form-help">
+                    <?php _e('聚合气泡显示的最大数字，超出仍显示该值（默认 9）', TRAVEL_MAP_TEXT_DOMAIN); ?>
+                </p>
             </div>
             
             <div class="travel-map-form-row">
-                <label for="planned_color" class="travel-map-form-label">
-                    <?php _e('计划地点颜色', TRAVEL_MAP_TEXT_DOMAIN); ?>
+                <label for="default_filter_status" class="travel-map-form-label">
+                    <?php _e('缺省筛选状态', TRAVEL_MAP_TEXT_DOMAIN); ?>
+                </label>
+                <?php $tm_filter_status = get_option('travel_map_default_filter_status', 'all'); ?>
+                <select name="default_filter_status" id="default_filter_status" class="travel-map-form-select">
+                    <option value="all" <?php selected($tm_filter_status, 'all'); ?>><?php _e('全部', TRAVEL_MAP_TEXT_DOMAIN); ?></option>
+                    <option value="done" <?php selected($tm_filter_status, 'done'); ?>><?php _e('已去', TRAVEL_MAP_TEXT_DOMAIN); ?></option>
+                    <option value="wish" <?php selected($tm_filter_status, 'wish'); ?>><?php _e('想去', TRAVEL_MAP_TEXT_DOMAIN); ?></option>
+                    <option value="plan" <?php selected($tm_filter_status, 'plan'); ?>><?php _e('计划', TRAVEL_MAP_TEXT_DOMAIN); ?></option>
+                </select>
+                <p class="travel-map-form-help">
+                    <?php _e('前台地图首次加载时激活的筛选页签。「全部」是已去/想去/计划的并集，不是单个状态。短代码显式写 status="…" 时以短代码为准。', TRAVEL_MAP_TEXT_DOMAIN); ?>
+                </p>
+            </div>
+            
+            <div class="travel-map-form-row travel-map-row-split">
+                <div>
+                    <label for="min_zoom" class="travel-map-form-label"><?php _e('最小缩放级别', TRAVEL_MAP_TEXT_DOMAIN); ?></label>
+                    <input type="number" id="min_zoom" name="min_zoom" value="<?php echo esc_attr(get_option('travel_map_min_zoom', 1)); ?>" class="travel-map-form-input" min="1" max="20">
+                </div>
+                <div>
+                    <label for="max_zoom" class="travel-map-form-label"><?php _e('最大缩放级别', TRAVEL_MAP_TEXT_DOMAIN); ?></label>
+                    <input type="number" id="max_zoom" name="max_zoom" value="<?php echo esc_attr(get_option('travel_map_max_zoom', 12)); ?>" class="travel-map-form-input" min="3" max="20">
+                </div>
+            </div>
+        </div>
+
+        <!-- 缺省封面 -->
+        <div class="travel-map-form-section">
+            <h2 class="travel-map-section-title"><?php _e('缺省封面图', TRAVEL_MAP_TEXT_DOMAIN); ?></h2>
+            
+            <div class="travel-map-form-row">
+                <label for="default_cover" class="travel-map-form-label">
+                    <?php _e('缺省缩略图地址', TRAVEL_MAP_TEXT_DOMAIN); ?>
                 </label>
                 <input 
-                    type="color" 
-                    id="planned_color" 
-                    name="planned_color" 
-                    value="<?php echo esc_attr(get_option('travel_map_planned_color', '#10B981')); ?>" 
-                    class="travel-map-form-input travel-map-color-picker"
+                    type="url" 
+                    id="default_cover" 
+                    name="default_cover" 
+                    value="<?php echo esc_attr(get_option('travel_map_default_cover', '')); ?>" 
+                    class="travel-map-form-input"
+                    placeholder="https://example.com/default-cover.jpg"
                 >
+                <p class="travel-map-form-help">
+                    <?php _e('地点无封面且无关联文章特色图时，标记使用的兜底图片地址', TRAVEL_MAP_TEXT_DOMAIN); ?>
+                </p>
             </div>
         </div>
 
@@ -202,7 +280,7 @@ if (!defined('ABSPATH')) {
                     <span class="travel-map-step-number">2</span>
                     <div class="travel-map-step-content">
                         <h4><?php _e('添加地点标记', TRAVEL_MAP_TEXT_DOMAIN); ?></h4>
-                        <p><?php _e('前往', TRAVEL_MAP_TEXT_DOMAIN); ?> <a href="<?php echo admin_url('admin.php?page=travel-map-coordinates'); ?>"><?php _e('坐标管理', TRAVEL_MAP_TEXT_DOMAIN); ?></a> <?php _e('页面添加您的旅行地点', TRAVEL_MAP_TEXT_DOMAIN); ?></p>
+                        <p><?php _e('前往', TRAVEL_MAP_TEXT_DOMAIN); ?> <a href="<?php echo admin_url('admin.php?page=travel-map-markers'); ?>"><?php _e('坐标管理', TRAVEL_MAP_TEXT_DOMAIN); ?></a> <?php _e('页面添加您的旅行地点', TRAVEL_MAP_TEXT_DOMAIN); ?></p>
                     </div>
                 </div>
                 <div class="travel-map-step">
@@ -232,7 +310,7 @@ if (!defined('ABSPATH')) {
                     <div class="travel-map-param">
                         <div class="travel-map-param-name">height</div>
                         <div class="travel-map-param-desc"><?php _e('地图高度', TRAVEL_MAP_TEXT_DOMAIN); ?></div>
-                        <div class="travel-map-param-default"><?php _e('默认: 500px', TRAVEL_MAP_TEXT_DOMAIN); ?></div>
+                        <div class="travel-map-param-default"><?php _e('默认: 550px', TRAVEL_MAP_TEXT_DOMAIN); ?></div>
                         <div class="travel-map-param-example">height="600px"</div>
                     </div>
                     <div class="travel-map-param">
@@ -251,13 +329,25 @@ if (!defined('ABSPATH')) {
                         <div class="travel-map-param-name">status</div>
                         <div class="travel-map-param-desc"><?php _e('显示的地点状态', TRAVEL_MAP_TEXT_DOMAIN); ?></div>
                         <div class="travel-map-param-default"><?php _e('默认: all', TRAVEL_MAP_TEXT_DOMAIN); ?></div>
-                        <div class="travel-map-param-example">status="visited"</div>
+                        <div class="travel-map-param-example">status="done"</div>
                     </div>
                     <div class="travel-map-param">
                         <div class="travel-map-param-name">filter_tabs</div>
                         <div class="travel-map-param-desc"><?php _e('是否显示筛选标签', TRAVEL_MAP_TEXT_DOMAIN); ?></div>
                         <div class="travel-map-param-default"><?php _e('默认: true', TRAVEL_MAP_TEXT_DOMAIN); ?></div>
                         <div class="travel-map-param-example">filter_tabs="false"</div>
+                    </div>
+                    <div class="travel-map-param">
+                        <div class="travel-map-param-name">filters</div>
+                        <div class="travel-map-param-desc"><?php _e('筛选按钮集（逗号分隔）', TRAVEL_MAP_TEXT_DOMAIN); ?></div>
+                        <div class="travel-map-param-default"><?php _e('默认: all,done,wish,plan', TRAVEL_MAP_TEXT_DOMAIN); ?></div>
+                        <div class="travel-map-param-example">filters="all,done"</div>
+                    </div>
+                    <div class="travel-map-param">
+                        <div class="travel-map-param-name">auto_zoom</div>
+                        <div class="travel-map-param-desc"><?php _e('覆盖自适应缩放设置', TRAVEL_MAP_TEXT_DOMAIN); ?></div>
+                        <div class="travel-map-param-default"><?php _e('默认: 设置值', TRAVEL_MAP_TEXT_DOMAIN); ?></div>
+                        <div class="travel-map-param-example">auto_zoom="false"</div>
                     </div>
                 </div>
             </div>
@@ -272,23 +362,23 @@ if (!defined('ABSPATH')) {
             <div class="travel-map-usage-content">
                 <div class="travel-map-status-grid">
                     <div class="travel-map-status-item">
-                        <div class="travel-map-status-badge visited">已去</div>
+                        <div class="travel-map-status-badge done">已去</div>
                         <div class="travel-map-status-info">
-                            <h4><?php _e('已去 (visited)', TRAVEL_MAP_TEXT_DOMAIN); ?></h4>
+                            <h4><?php _e('已去 (done)', TRAVEL_MAP_TEXT_DOMAIN); ?></h4>
                             <p><?php _e('已访问的地方，可关联旅行文章，点击显示文章详情', TRAVEL_MAP_TEXT_DOMAIN); ?></p>
                         </div>
                     </div>
                     <div class="travel-map-status-item">
-                        <div class="travel-map-status-badge want_to_go">想去</div>
+                        <div class="travel-map-status-badge wish">想去</div>
                         <div class="travel-map-status-info">
-                            <h4><?php _e('想去 (want_to_go)', TRAVEL_MAP_TEXT_DOMAIN); ?></h4>
+                            <h4><?php _e('想去 (wish)', TRAVEL_MAP_TEXT_DOMAIN); ?></h4>
                             <p><?php _e('旅行愿望清单，可设置想去理由，点击显示简洁信息', TRAVEL_MAP_TEXT_DOMAIN); ?></p>
                         </div>
                     </div>
                     <div class="travel-map-status-item">
-                        <div class="travel-map-status-badge planned">计划</div>
+                        <div class="travel-map-status-badge plan">计划</div>
                         <div class="travel-map-status-info">
-                            <h4><?php _e('计划 (planned)', TRAVEL_MAP_TEXT_DOMAIN); ?></h4>
+                            <h4><?php _e('计划 (plan)', TRAVEL_MAP_TEXT_DOMAIN); ?></h4>
                             <p><?php _e('已制定计划的旅行，可设置计划日期，点击显示计划详情', TRAVEL_MAP_TEXT_DOMAIN); ?></p>
                         </div>
                     </div>
@@ -325,8 +415,8 @@ if (!defined('ABSPATH')) {
                     <div class="travel-map-example">
                         <h4><?php _e('只显示已去地点', TRAVEL_MAP_TEXT_DOMAIN); ?></h4>
                         <div class="travel-map-code-block">
-                            <code>[travel_map status="visited" filter_tabs="false"]</code>
-                            <button class="travel-map-copy-btn" data-copy='[travel_map status=&quot;visited&quot; filter_tabs=&quot;false&quot;]' title="<?php _e('复制代码', TRAVEL_MAP_TEXT_DOMAIN); ?>">📋</button>
+                            <code>[travel_map status="done" filter_tabs="false"]</code>
+                            <button class="travel-map-copy-btn" data-copy='[travel_map status=&quot;done&quot; filter_tabs=&quot;false&quot;]' title="<?php _e('复制代码', TRAVEL_MAP_TEXT_DOMAIN); ?>">📋</button>
                         </div>
                         <p class="travel-map-example-desc"><?php _e('只显示已去的地点，隐藏筛选标签', TRAVEL_MAP_TEXT_DOMAIN); ?></p>
                     </div>
@@ -343,8 +433,8 @@ if (!defined('ABSPATH')) {
                     <div class="travel-map-example">
                         <h4><?php _e('只显示想去地点', TRAVEL_MAP_TEXT_DOMAIN); ?></h4>
                         <div class="travel-map-code-block">
-                            <code>[travel_map status="want_to_go" height="500px"]</code>
-                            <button class="travel-map-copy-btn" data-copy='[travel_map status=&quot;want_to_go&quot; height=&quot;500px&quot;]' title="<?php _e('复制代码', TRAVEL_MAP_TEXT_DOMAIN); ?>">📋</button>
+                            <code>[travel_map status="wish" height="500px"]</code>
+                            <button class="travel-map-copy-btn" data-copy='[travel_map status=&quot;wish&quot; height=&quot;500px&quot;]' title="<?php _e('复制代码', TRAVEL_MAP_TEXT_DOMAIN); ?>">📋</button>
                         </div>
                         <p class="travel-map-example-desc"><?php _e('仅显示想去的地点，展示旅行愿望清单', TRAVEL_MAP_TEXT_DOMAIN); ?></p>
                     </div>
@@ -352,8 +442,8 @@ if (!defined('ABSPATH')) {
                     <div class="travel-map-example">
                         <h4><?php _e('计划中的旅行', TRAVEL_MAP_TEXT_DOMAIN); ?></h4>
                         <div class="travel-map-code-block">
-                            <code>[travel_map status="planned" filter_tabs="false"]</code>
-                            <button class="travel-map-copy-btn" data-copy='[travel_map status=&quot;planned&quot; filter_tabs=&quot;false&quot;]' title="<?php _e('复制代码', TRAVEL_MAP_TEXT_DOMAIN); ?>">📋</button>
+                            <code>[travel_map status="plan" filter_tabs="false"]</code>
+                            <button class="travel-map-copy-btn" data-copy='[travel_map status=&quot;plan&quot; filter_tabs=&quot;false&quot;]' title="<?php _e('复制代码', TRAVEL_MAP_TEXT_DOMAIN); ?>">📋</button>
                         </div>
                         <p class="travel-map-example-desc"><?php _e('显示已制定计划的旅行地点，隐藏筛选标签', TRAVEL_MAP_TEXT_DOMAIN); ?></p>
                     </div>

@@ -1,859 +1,112 @@
 /**
  * Travel Map Frontend Styles
- * 前端地图样式
+ *
+ * 标记六形态/hover 照片揭示（§2.4）、弹窗（§2.5）、筛选栏（§2.6）、统计面板（§2.7）
  */
 
-/* 全局链接样式 - 强制不显示下划线 */
-.travel-map-container a,
-.travel-map-container a:link,
-.travel-map-container a:visited,
-.travel-map-container a:hover,
-.travel-map-container a:active {
-    text-decoration: none !important;
+/* ============ 主色变量 ============ */
+:root {
+    --tm-main-color: #c0580c;
+    --tm-hover-color: #e0700a;
+    --tm-text-color: #222;
+    --tm-text-gray: #555;
+    --tm-background-gray-lightest: #f9f9f9;
 }
 
-/* 深色模式适配 */
+/* ============ 容器骨架 ============ */
+.travel-map-container {
+    width: 100%;
+    height: var(--travel-map-height, 550px);
+    position: relative;
+    overflow: hidden;
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+
+.travel-map-wrapper,
+.travel-map {
+    width: 100%;
+    height: 100%;
+    min-height: 400px;
+}
+
+/* 加载态：数据 + 图层就绪后由 JS 加 is-loaded 淡出 */
+.travel-map-loading {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    background: #f5f5f5;
+    z-index: 1000;
+    transition: opacity 0.4s ease;
+}
+
+.travel-map-container.is-loaded .travel-map-loading,
+.travel-map-wrapper.is-loaded .travel-map-loading {
+    display: none;
+}
+
+.travel-map-spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid rgba(0, 0, 0, 0.08);
+    border-top-color: var(--tm-main-color);
+    border-radius: 50%;
+    animation: travel-map-spin 0.8s linear infinite;
+    margin-bottom: 10px;
+}
+
+@keyframes travel-map-spin {
+    to { transform: rotate(360deg); }
+}
+
+.travel-map-loading-text {
+    font-size: 13px;
+    color: #666;
+}
+
+/* 错误态 */
+.travel-map-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 20px;
+    text-align: center;
+}
+
+.travel-map-error-icon { font-size: 40px; margin-bottom: 12px; }
+.travel-map-error-message { font-size: 16px; color: #dc2626; margin-bottom: 16px; }
+.travel-map-error-details { font-size: 13px; color: #666; }
+.travel-map-error-details ul { text-align: left; display: inline-block; margin: 8px 0; }
+.travel-map-retry-btn {
+    margin-top: 12px;
+    padding: 8px 20px;
+    background: var(--tm-main-color);
+    color: #fff;
+    border: 0;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+/* 深色模式容器底色 */
 html.dark .travel-map-container {
     background: #1f2937;
     color: #f3f4f6;
 }
 
-html.dark .travel-map-filters {
-    background: #374151;
-    border-bottom-color: #4b5563;
-}
-
-html.dark .travel-map-embedded-filters {
-    background: rgba(55, 65, 81, 0.95);
-    border-color: rgba(75, 85, 99, 0.3);
-}
-
-html.dark .travel-map-filter-tab {
-    background: #374151;
-    border-color: #4b5563;
-    color: #d1d5db;
-}
-
-html.dark .travel-map-filter-tab:hover {
-    background: #4b5563;
-    border-color: #6b7280;
-    color: #f3f4f6;
-}
-
-html.dark .travel-map-control-btn {
-    background: #374151;
-    border-color: #4b5563;
-    color: #f3f4f6;
-}
-
-html.dark .travel-map-control-btn:hover {
-    background: #4b5563;
-}
-
-html.dark .travel-map-control-btn svg {
-    color: #f3f4f6;
-}
-
-html.dark .travel-map-loading {
-    background: #1f2937;
-    color: #f3f4f6;
-}
-
-html.dark .travel-map-loading-text {
-    color: #d1d5db;
-}
-
-html.dark .travel-map-error {
-    background: #7f1d1d;
-    border-color: #dc2626;
-    color: #fecaca;
-}
-
-html.dark .travel-map-error-details {
-    background: #991b1b;
-    border-color: #dc2626;
-}
-
-html.dark .travel-map-popup {
-    background: rgba(31, 41, 55, 0.8);
-}
-
-html.dark .travel-map-popup-content {
-    background: #374151;
-    border-color: #4b5563;
-    color: #f3f4f6;
-}
-
-html.dark .travel-map-popup-close {
-    background: #4b5563;
-    color: #f3f4f6;
-}
-
-html.dark .travel-map-popup-close:hover {
-    background: #6b7280;
-}
-
-/* auto模式 - 跟随系统主题 */
-html.auto .travel-map-container {
-    background: #f5f5f5;
-    color: #374151;
-}
-
-@media (prefers-color-scheme: dark) {
-    html.auto .travel-map-container {
-        background: #1f2937;
-        color: #f3f4f6;
-    }
-    
-    html.auto .travel-map-filters {
-        background: #374151;
-        border-bottom-color: #4b5563;
-    }
-    
-    html.auto .travel-map-embedded-filters {
-        background: rgba(55, 65, 81, 0.95);
-        border-color: rgba(75, 85, 99, 0.3);
-    }
-    
-    html.auto .travel-map-filter-tab {
-        background: #374151;
-        border-color: #4b5563;
-        color: #d1d5db;
-    }
-    
-    html.auto .travel-map-filter-tab:hover {
-        background: #4b5563;
-        border-color: #6b7280;
-        color: #f3f4f6;
-    }
-    
-    html.auto .travel-map-control-btn {
-        background: #374151;
-        border-color: #4b5563;
-        color: #f3f4f6;
-    }
-    
-    html.auto .travel-map-control-btn:hover {
-        background: #4b5563;
-    }
-    
-    html.auto .travel-map-control-btn svg {
-        color: #f3f4f6;
-    }
-    
-    html.auto .travel-map-loading {
-        background: #1f2937;
-        color: #f3f4f6;
-    }
-    
-    html.auto .travel-map-loading-text {
-        color: #d1d5db;
-    }
-    
-    html.auto .travel-map-error {
-        background: #7f1d1d;
-        border-color: #dc2626;
-        color: #fecaca;
-    }
-    
-    html.auto .travel-map-error-details {
-        background: #991b1b;
-        border-color: #dc2626;
-    }
-    
-    html.auto .travel-map-popup {
-        background: rgba(31, 41, 55, 0.8);
-    }
-    
-    html.auto .travel-map-popup-content {
-        background: #374151;
-        border-color: #4b5563;
-        color: #f3f4f6;
-    }
-    
-    html.auto .travel-map-popup-close {
-        background: #4b5563;
-        color: #f3f4f6;
-    }
-    
-    html.auto .travel-map-popup-close:hover {
-        background: #6b7280;
-    }
-}
-
-/* 地图容器样式 */
-.travel-map-container {
-    width: 100%;
-    height: var(--travel-map-height, 500px);
-    --travel-map-control-size: 40px;
-    --travel-map-control-icon: 20px;
-    position: relative;
-    background: #f5f5f5;
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    /* 强化防护机制 - 防止主题图片浏览器 */
-    isolation: isolate;
-    contain: layout style;
-    pointer-events: auto;
-    z-index: 1;
-}
-
-/* 强化防护机制 - 防止主题图片浏览器 */
-.travel-map-container * {
-    /* 防止主题脚本识别图片元素 */
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
-}
-
-.travel-map-container .travel-map-wrapper,
-.travel-map-container .travel-map {
-    width: 100%;
-    height: 100%;
-    min-height: 400px;
-}
-
-.travel-map-container.travel-map-no-tabs .travel-map {
-    border-radius: 8px;
-}
-
-.travel-map-accessibility {
-    position: absolute;
-    left: -9999px;
-}
-
-.travel-map-container img {
-    pointer-events: none !important;
-    -webkit-user-drag: none !important;
-    -khtml-user-drag: none !important;
-    -moz-user-drag: none !important;
-    -o-user-drag: none !important;
-    user-drag: none !important;
-    /* 移除可能被主题识别的属性 */
-    cursor: default !important;
-}
-
-/* 特别防护弹窗内的图片 */
-.travel-map-custom-popup img {
-    pointer-events: none !important;
-    user-select: none !important;
-    cursor: default !important;
-    /* 防止主题图片浏览器脚本识别 */
-    -webkit-touch-callout: none !important;
-    -webkit-user-select: none !important;
-    -khtml-user-select: none !important;
-    -moz-user-select: none !important;
-    -ms-user-select: none !important;
-    user-select: none !important;
-}
-
-/* 确保弹窗元素不被主题脚本影响 */
-.travel-map-custom-popup {
-    isolation: isolate !important;
-    contain: layout style !important;
-    pointer-events: auto !important;
-    z-index: 9999 !important;
-}
-
-/* 标记点样式优化（合并重复的过渡效果） */
-.travel-marker-with-image,
-.travel-marker-default {
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-radius 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* 桌面端鼠标悬停放大效果 - 仅在非触摸设备上生效 */
-@media (hover: hover) and (pointer: fine) {
-    .travel-marker-with-image:hover {
-        transform: scale(3.0);
-        box-shadow: 0 12px 35px rgba(0,0,0,0.6) !important;
-        border-radius: 5px !important;
-        border-width: 0.3px !important;
-        z-index: 1000;
-    }
-    
-    .travel-marker-default:hover {
-        transform: scale(2.0);
-        box-shadow: 0 10px 30px rgba(0,0,0,0.5) !important;
-        border-radius: 4px !important;
-        z-index: 1000;
-    }
-}
-
-/* 悬停预览样式 */
-.travel-map-hover-preview {
-    position: fixed;
-    z-index: 9999;
-    opacity: 0;
-    /* 移除初始 transform，改为纯 opacity 动画 */
-    transition: opacity 0.2s ease;
-    pointer-events: none;
-}
-
-.travel-map-hover-preview.show {
-    opacity: 1;
-}
-
-.hover-preview-content {
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-    overflow: hidden;
-    width: 120px;
-}
-
-.hover-preview-content img {
-    width: 100%;
-    height: 80px;
-    object-fit: cover;
-    display: block;
-}
-
-.hover-preview-title {
-    padding: 8px 10px;
-    font-size: 12px;
-    font-weight: 500;
-    color: #333;
-    text-align: center;
-    background: white;
-}
-
-/* 重新设计的弹窗样式（参考图风格） */
-.travel-map-enhanced-popup {
-    position: absolute;
-    background: #ffffff;
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-    min-width: 200px;
-    max-width: 240px;
-    z-index: 10001;
-    /* 移除初始 transform，改为使用 opacity 实现动画 */
-    opacity: 0;
-    transition: opacity 0.2s ease;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    pointer-events: auto;
-    isolation: isolate;
-    contain: layout style;
-    /* 移除 overflow: hidden 以显示箭头 */
-}
-
-/* 顶部特色图片 */
-.travel-map-enhanced-popup .popup-header-image {
-    width: 100%;
-    height: 120px;
-    overflow: hidden;
-    border-radius: 12px 12px 0 0;
-    position: relative;
-}
-
-.travel-map-enhanced-popup .popup-header-image img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-}
-
-/* 地点头部信息 */
-.travel-map-enhanced-popup .popup-location-header {
-    padding: 8px 12px 6px 12px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.travel-map-enhanced-popup .location-flag {
-    font-size: 14px;
-    flex-shrink: 0;
-}
-
-.travel-map-enhanced-popup .location-name {
-    font-size: 14px;
-    font-weight: 600;
-    color: #333;
-    margin: 0;
-    line-height: 1.1;
-}
-
-/* 文章列表 */
-.travel-map-enhanced-popup .popup-articles-list {
-    padding: 0 12px 12px 12px;
-    max-height: 150px;
-    overflow-y: auto;
-}
-
-.travel-map-enhanced-popup .popup-article-item {
-    padding: 4px 0;
-    cursor: pointer;
-    transition: color 0.2s ease;
-    font-size: 12px;
-    color: #333;
-    line-height: 1.2;
-    border-bottom: 1px solid #f0f0f0;
-}
-
-.travel-map-enhanced-popup .popup-article-item:last-child {
-    border-bottom: none;
-}
-
-.travel-map-enhanced-popup .popup-article-item:hover {
-    color: #007cba;
-}
-
-/* 关闭按钮 */
-.travel-map-enhanced-popup .travel-map-popup-close {
-    position: absolute;
-    top: 6px;
-    right: 6px;
-    background: rgba(255,255,255,0.9);
-    color: #666;
-    border: none;
-    border-radius: 50%;
-    width: 20px;
-    height: 20px;
-    font-size: 12px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-    z-index: 10002;
-    line-height: 1;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.travel-map-enhanced-popup .travel-map-popup-close:hover {
-    background: rgba(255,255,255,1);
-    color: #333;
-}
-
-
-
-.travel-map-enhanced-popup.show {
-    opacity: 1;
-}
-
-/* 深色模式适配 */
-html.dark .travel-map-enhanced-popup {
-    background: #2d3748;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-}
-
-html.dark .travel-map-enhanced-popup .popup-location-header {
-    color: #f7fafc;
-}
-
-html.dark .travel-map-enhanced-popup .location-name {
-    color: #f7fafc;
-}
-
-html.dark .travel-map-enhanced-popup .popup-article-item {
-    color: #e2e8f0;
-    border-bottom-color: #4a5568;
-}
-
-html.dark .travel-map-enhanced-popup .popup-article-item:hover {
-    color: #63b3ed;
-}
-
-html.dark .travel-map-enhanced-popup .travel-map-popup-close {
-    background: rgba(45, 55, 72, 0.9);
-    color: #e2e8f0;
-}
-
-html.dark .travel-map-enhanced-popup .travel-map-popup-close:hover {
-    background: rgba(45, 55, 72, 1);
-    color: #f7fafc;
-}
-
-
-
-/* 浅色模式和auto模式默认样式（合并重复规则） */
-html.light .travel-map-enhanced-popup,
-html.auto .travel-map-enhanced-popup {
-    background: #ffffff;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-}
-
-html.light .travel-map-enhanced-popup .popup-location-header,
-html.auto .travel-map-enhanced-popup .popup-location-header,
-html.light .travel-map-enhanced-popup .location-name,
-html.auto .travel-map-enhanced-popup .location-name {
-    color: #333;
-}
-
-html.light .travel-map-enhanced-popup .popup-article-item,
-html.auto .travel-map-enhanced-popup .popup-article-item {
-    color: #333;
-    border-bottom-color: #f0f0f0;
-}
-
-html.light .travel-map-enhanced-popup .popup-article-item:hover,
-html.auto .travel-map-enhanced-popup .popup-article-item:hover {
-    color: #007cba;
-}
-
-html.light .travel-map-enhanced-popup .travel-map-popup-close,
-html.auto .travel-map-enhanced-popup .travel-map-popup-close {
-    background: rgba(255,255,255,0.9);
-    color: #666;
-}
-
-html.light .travel-map-enhanced-popup .travel-map-popup-close:hover,
-html.auto .travel-map-enhanced-popup .travel-map-popup-close:hover {
-    background: rgba(255,255,255,1);
-    color: #333;
-}
-
-
-
-@media (prefers-color-scheme: dark) {
-    html.auto .travel-map-enhanced-popup {
-        background: #2d3748;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-    }
-    
-    html.auto .travel-map-enhanced-popup .popup-location-header {
-        color: #f7fafc;
-    }
-    
-    html.auto .travel-map-enhanced-popup .location-name {
-        color: #f7fafc;
-    }
-    
-    html.auto .travel-map-enhanced-popup .popup-article-item {
-        color: #e2e8f0;
-        border-bottom-color: #4a5568;
-    }
-    
-    html.auto .travel-map-enhanced-popup .popup-article-item:hover {
-        color: #63b3ed;
-    }
-    
-    html.auto .travel-map-enhanced-popup .travel-map-popup-close {
-        background: rgba(45, 55, 72, 0.9);
-        color: #e2e8f0;
-    }
-    
-    html.auto .travel-map-enhanced-popup .travel-map-popup-close:hover {
-        background: rgba(45, 55, 72, 1);
-        color: #f7fafc;
-    }
-    
-
-}
-
-.travel-map-custom-popup * {
-    /* 重置所有子元素的样式，防止主题干扰 */
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    border: none;
-    outline: none;
-    text-decoration: none;
-    list-style: none;
-    background: none;
-    font-family: inherit;
-    font-size: inherit;
-    font-weight: inherit;
-    line-height: inherit;
-    color: inherit;
-}
-
-.travel-map-custom-popup img {
-    /* 特别防止图片被主题的图片浏览器捕获 */
-    pointer-events: none !important;
-    user-select: none !important;
-    -webkit-user-select: none !important;
-    -moz-user-select: none !important;
-    -ms-user-select: none !important;
-    cursor: default !important;
-}
-
-.travel-map-custom-popup.show {
-    opacity: 1;
-}
-
-.travel-map-custom-popup .travel-map-popup-close {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    background: rgba(255,255,255,0.9);
-    color: #666;
-    border: 1px solid #ddd;
-    border-radius: 50%;
-    width: 20px;
-    height: 20px;
-    font-size: 12px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-    z-index: 10002;
-    line-height: 1;
-}
-
-.travel-map-custom-popup .travel-map-popup-close:hover {
-    background: #f0f0f0;
-    border-color: #ccc;
-    color: #333;
-}
-
-.travel-map-custom-popup .popup-location {
-    padding: 6px 10px 4px 10px;
-    border-bottom: 1px solid #e8e8e8;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    background: #fafafa;
-    border-radius: 8px 8px 0 0;
-}
-
-.travel-map-custom-popup .location-flag {
-    font-size: 12px;
-    flex-shrink: 0;
-}
-
-.travel-map-custom-popup .location-name {
-    font-size: 12px;
-    font-weight: 600;
-    color: #333;
-    margin: 0;
-    line-height: 1.1;
-}
-
-.travel-map-custom-popup .popup-articles {
-    padding: 4px 8px 6px 8px;
-    max-height: 120px;
-    overflow-y: auto;
-}
-
-.travel-map-custom-popup .popup-article {
-    padding: 2px 4px;
-    border-radius: 2px;
-    cursor: pointer;
-    transition: background 0.15s ease;
-    margin-bottom: 2px;
-    border: none;
-}
-
-.travel-map-custom-popup .popup-article:hover {
-    background: #f0f0f0;
-}
-
-.travel-map-custom-popup .popup-article .article-title {
-    font-size: 11px;
-    font-weight: 500;
-    color: #222;
-    margin: 0;
-    line-height: 1.1;
-    display: -webkit-box;
-    -webkit-line-clamp: 1;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-
-.travel-map-custom-popup .popup-article .article-date {
-    font-size: 9px;
-    color: #999;
-    margin: 0;
-    margin-top: 1px;
-}
-
-/* 简洁弹窗信息样式 */
-.travel-map-custom-popup .popup-article-info {
-    padding: 0;
-}
-
-.travel-map-custom-popup .info-text {
-    font-size: 10px;
-    color: #666;
-    line-height: 1.2;
-    margin: 0;
-}
-
-/* 新增的信息项样式 */
-.travel-map-custom-popup .info-item {
-    font-size: 10px;
-    color: #666;
-    line-height: 1.3;
-    margin: 0 0 3px 0;
-    padding: 2px 0;
-}
-
-.travel-map-custom-popup .info-item:last-child {
-    margin-bottom: 0;
-}
-
-.travel-map-custom-popup .info-item.wish-reason {
-    color: #1e40af;
-    font-weight: 500;
-}
-
-.travel-map-custom-popup .info-item.description {
-    color: #374151;
-}
-
-/* 筛选标签栏 */
-.travel-map-filters {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background: #fff;
-    padding: 12px 16px;
-    border-bottom: 1px solid #e5e7eb;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-/* 嵌入式筛选标签 - 浮动在地图上方 */
-.travel-map-embedded-filters {
-    position: absolute;
-    top: 12px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 1001; /* 确保在地图之上 */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px); /* Safari 兼容 */
-    padding: 8px 12px;
-    border-radius: 20px;
-    flex-wrap: wrap;
-    gap: 6px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    pointer-events: auto; /* 确保可以点击 */
-    visibility: visible; /* 确保可见 */
-    opacity: 1; /* 确保不透明 */
-    min-width: 200px; /* 最小宽度 */
-}
-
-.travel-map-filter-tab {
-    padding: 6px 14px;
-    border: 1px solid #e5e7eb;
-    border-radius: 20px;
-    background: #fff;
-    color: #6b7280;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    font-size: 12px;
-    font-weight: 500;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    min-height: 28px;
-    line-height: 1;
-}
-
-.travel-map-filter-tab:hover {
-    background: #f9fafb;
-    border-color: #d1d5db;
-    color: #374151;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.travel-map-filter-tab.active {
-    color: #fff;
-    border-color: transparent;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    transform: translateY(-1px);
-}
-
-.travel-map-filter-tab.active.all {
-    background: linear-gradient(135deg, #6b7280, #4b5563);
-}
-
-.travel-map-filter-tab.active.visited {
-    background: linear-gradient(135deg, #ff6b35, #e55a2b);
-}
-
-.travel-map-filter-tab.active.want_to_go {
-    background: linear-gradient(135deg, #3b82f6, #2563eb);
-}
-
-.travel-map-filter-tab.active.planned {
-    background: linear-gradient(135deg, #10b981, #059669);
-}
-
-/* 地图主体 */
-.travel-map-wrapper {
-    position: relative;
-    width: 100%;
-    min-height: 400px;
-    height: inherit; /* 继承父容器的高度设置 */
-    overflow: hidden; /* 防止子元素溢出 */
-    border-radius: 8px; /* 与容器一致的圆角 */
-}
-
-.travel-map {
-    width: 100%;
-    height: 100%; /* 继承包装器的高度 */
-    min-height: 400px;
-    position: relative;
-    background: #f5f5f5;
-    border-radius: 8px; /* 与容器一致的圆角 */
-}
-
-/* 确保地图容器能够正确继承短代码设置的高度 */
-.travel-map-container {
-    /* 移除固定高度，让短代码的内联样式生效 */
-}
-
-/* 响应式高度调整 - 只在移动端进行限制 */
-@media (max-width: 768px) {
-    .travel-map-container {
-        /* 移动端使用竖型显示，高度大于宽度 */
-        aspect-ratio: 1 / 1.3 !important; /* 高宽比 1:1.3 */
-        width: 100% !important;
-        max-height: none !important; /* 移除最大高度限制 */
-        min-height: 400px; /* 最小高度保证 */
-    }
-    
-    .travel-map-wrapper {
-        height: 100%;
-        max-height: none;
-        min-height: 400px;
-    }
-    
-    .travel-map {
-        height: 100%;
-        max-height: none;
-        min-height: 400px;
-    }
-}
-
-@media (max-width: 480px) {
-    .travel-map-container {
-        /* 小屏幕使用更大的高宽比 */
-        aspect-ratio: 1 / 1.5 !important; /* 高宽比 1:1.5 */
-        width: 100% !important;
-        max-height: none !important;
-        min-height: 350px; /* 最小高度保证 */
-    }
-    
-    .travel-map-wrapper {
-        height: 100%;
-        max-height: none;
-        min-height: 350px;
-    }
-    
-    .travel-map {
-        height: 100%;
-        max-height: none;
-        min-height: 350px;
-    }
-}
-
-/* 地图控制按钮 */
+/* ============ 地图控件（右上） ============ */
 .travel-map-controls {
     position: absolute;
-    top: 12px;
-    right: 12px;
+    top: 10px;
+    right: 10px;
     z-index: 1000;
     display: flex;
     flex-direction: column;
@@ -861,879 +114,833 @@ html.auto .travel-map-enhanced-popup .travel-map-popup-close:hover {
 }
 
 .travel-map-control-btn {
-    width: var(--travel-map-control-size);
-    height: var(--travel-map-control-size);
-    background: #fff;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
+    width: 36px;
+    height: 36px;
     display: flex;
     align-items: center;
     justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    background: #fff;
+    border: 0;
+    border-radius: 6px;
     padding: 0;
-    font-size: 0;
-    line-height: 0;
-    -webkit-appearance: none;
-    appearance: none;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
 }
 
 .travel-map-control-btn:hover {
-    background: #f9fafb;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    background: #f0f0f0;
 }
 
 .travel-map-control-btn svg {
-    width: var(--travel-map-control-icon);
-    height: var(--travel-map-control-icon);
-    min-width: var(--travel-map-control-icon);
-    min-height: var(--travel-map-control-icon);
+    width: 18px;
+    height: 18px;
     display: block;
-    flex: 0 0 auto;
-    color: #374151;
+    color: #333;
 }
 
-/* 加载状态 */
-.travel-map-loading {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: #f5f5f5;
+html.dark .travel-map-control-btn {
+    background: #374151;
+}
+
+html.dark .travel-map-control-btn svg {
+    color: #d1d5db;
+}
+
+/* ============ 标记六形态 ============ */
+.marker {
+    --mark-size: 18px;
+    --mark-base-size: 18px;
+    background: linear-gradient(180deg, #cf6609, #c00);
+    box-shadow: 0 16px 60px 0 rgba(0, 0, 0, 0.08),
+        0 6px 12px 0 rgba(0, 0, 0, 0.1);
+    background-size: cover;
+    width: var(--mark-size);
+    height: var(--mark-size);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: width 0.2s ease-out, height 0.2s ease-out, transform 0.2s ease-out;
+    border: 1px solid #fff;
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
-    flex-direction: column;
-    z-index: 1000;
+    /* AMap 以初始内容尺寸计算中心锚点；hover 尺寸变化时补偿尺寸差，
+       确保照片仍围绕同一个经纬度中心扩张。 */
+    transform: translate(
+        calc((var(--mark-base-size) - var(--mark-size)) / 2),
+        calc((var(--mark-base-size) - var(--mark-size)) / 2)
+    );
 }
 
-.travel-map-spinner {
-    width: 32px;
-    height: 32px;
-    border: 3px solid #e5e7eb;
-    border-top: 3px solid #3b82f6;
-    border-radius: 50%;
-    animation: travel-map-spin 1s linear infinite;
-}
-
-@keyframes travel-map-spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-.travel-map-loading-text {
-    margin-top: 12px;
-    color: #6b7280;
-    font-size: 14px;
-}
-
-/* 错误状态 */
-.travel-map-error {
-    padding: 40px 24px;
-    background: #fef2f2;
-    color: #dc2626;
-    border-radius: 8px;
-    text-align: center;
-    font-size: 14px;
-    border: 1px solid #fecaca;
-}
-
-.travel-map-error-icon {
-    font-size: 48px;
-    margin-bottom: 16px;
-    display: block;
-}
-
-.travel-map-error-message {
-    font-size: 16px;
-    font-weight: 600;
-    margin-bottom: 16px;
-    color: #dc2626;
-}
-
-.travel-map-error-details {
-    background: #fff;
-    padding: 16px;
-    border-radius: 6px;
-    margin-top: 16px;
-    text-align: left;
-    border: 1px solid #fecaca;
-}
-
-.travel-map-error-details p {
-    margin: 0 0 8px 0;
-    font-weight: 600;
-    color: #991b1b;
-}
-
-.travel-map-error-details ul {
-    margin: 8px 0 16px 20px;
-    color: #7f1d1d;
-}
-
-.travel-map-error-details li {
-    margin-bottom: 4px;
-}
-
-.travel-map-retry-btn {
-    background: #dc2626;
-    color: #fff;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 13px;
-    transition: background 0.2s;
-}
-
-.travel-map-retry-btn:hover {
-    background: #b91c1c;
-}
-
-/* 简洁弹窗样式（用于计划和想去状态） */
-.travel-map-simple-popup {
+/* 44px 触屏命中区（保留自旧版，视觉不占位） */
+.travel-marker-hit::after {
+    content: "";
     position: absolute;
-    background: #fff;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    border: 1px solid #e5e7eb;
-    padding: 12px 16px;
-    min-width: 180px;
-    max-width: 250px;
-    z-index: 1000;
-    /* 移除初始 transform，改为使用 opacity 实现动画 */
-    opacity: 0;
-    transition: opacity 0.2s ease;
-    /* CSS 隔离保护策略 */
-    isolation: isolate;
-    contain: layout style;
+    left: 50%;
+    top: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
 }
 
-.travel-map-simple-popup.show {
+.marker::before {
+    position: absolute;
+    border-radius: 100%;
+    content: "";
+    width: 100%;
+    height: 100%;
+    background-image: var(--photo);
+    background-position: 50%;
+    background-size: cover;
+    transition: opacity 0.5s ease-out;
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* hover 放大仅在真有悬停能力的指针设备启用。
+   触屏没有「移出」语义，裸 :hover 会让标记点击后卡在 64px 放大态。
+   照片标记的 ::before 在静止态已是 opacity:1，触屏不受影响。 */
+@media (hover: hover) and (pointer: fine) {
+    .marker:not(.no-hover):hover {
+        --mark-size: 64px;
+        z-index: 100;
+    }
+
+    .marker:not(.no-hover):hover::before {
+        opacity: 1;
+    }
+}
+
+.marker.no-post {
+    background: linear-gradient(180deg, #89a9cd 0, #485f81);
+}
+
+.marker.has-photo {
+    --mark-size: 24px;
+    --mark-base-size: 24px;
+    border-radius: 10px;
+    background: transparent;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.marker.has-photo::before {
+    border-radius: 10px;
     opacity: 1;
 }
 
-.travel-map-simple-popup::after {
-    content: '';
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 0;
-    height: 0;
-    border-left: 6px solid transparent;
-    border-right: 6px solid transparent;
-    border-top: 6px solid #fff;
+.marker.marker--plan {
+    --mark-size: 12px;
+    --mark-base-size: 12px;
+    background: linear-gradient(180deg, #9b59b6 0, #8e44ad);
 }
 
-/* 当简洁弹窗在标记点下方时 */
-.travel-map-simple-popup.popup-below::after {
-    top: -6px;
-    border-top: none;
-    border-bottom: 6px solid #fff;
+.marker.marker--wish {
+    --mark-size: 12px;
+    --mark-base-size: 12px;
+    background: linear-gradient(180deg, #f9c74f 0, #f9844a);
 }
 
-.travel-map-simple-popup-close {
-    position: absolute;
-    top: 4px;
-    right: 4px;
-    width: 18px;
-    height: 18px;
-    background: none;
-    border: none;
-    color: #9ca3af;
-    cursor: pointer;
+/* 聚合气泡：::after 显示 data-cardinality */
+.cluster::after {
+    content: attr(data-cardinality);
+    color: #fff;
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+    height: 100%;
+    font-size: 12px;
+    font-weight: 700;
+    transition: font-size 0.2s ease-out;
+    line-height: 1;
+}
+
+.cluster:hover::after {
+    font-size: 32px;
+}
+
+/* ============ 弹窗 ============ */
+/* AMap 2.0 isCustom 模式的真实外层是 .amap-info（DOM 中不存在 .amap-info-window 类）。
+   弹窗必须盖过 marker（z-index 12 起），否则卡片会被标记压住。 */
+.amap-info {
+    max-width: 240px !important;
+    z-index: 200 !important;
+}
+
+/**
+ * isCustom 模式下 AMap 不会生成 .amap-info-content，内容直接挂在
+ * .amap-info-contentContainer 里，所以卡片样式挂在自己的 .travel-map-popup 根节点上。
+ * 高德那两个容器只做尺寸放开，避免默认 padding 把卡片挤窄。
+ */
+.amap-info-content,
+.amap-info-contentContainer {
+    padding: 0 !important;
+    background: transparent;
+    width: auto !important;
+}
+
+/**
+ * 卡片自带前景色：弹窗挂在地图容器里，会继承主题的正文颜色。
+ * 深色主题下标题会被染成浅色而在白底上看不见，所以颜色全部自持。
+ */
+.travel-map-popup {
+    line-height: 1.6;
+    border-radius: 10px;
     font-size: 14px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    background: #fff;
+    color: var(--tm-text-color);
+    /* 240px 是规格 §2.5 的实际生效值：目标插件声明 width:280px，但 Mapbox Popup
+       默认 maxWidth:"240px" 会写成容器内联样式压过它，且目标插件未覆盖该默认值
+       （map.js 里 maxWidth 出现 0 次、popup 规则无 !important）。 */
+    width: 240px;
+    /* 窄屏兜底：JS 按容器宽度写入 --tm-popup-max-width（容器宽 - 2×安全边距）。
+       容器放不下 240px 时卡片自动收缩，避免被 container 的 overflow:hidden 裁掉。
+       不用 min() 以兼容旧 Safari；变量缺失时退回 240px。 */
+    max-width: var(--tm-popup-max-width, 240px);
+    box-sizing: border-box;
+    position: relative;
+    text-align: left;
+    overflow: visible;
+}
+
+.travel-map-popup::after {
+    content: "";
+    position: absolute;
+    /* 箭头横向位置由 JS 写入 --tm-arrow-left。卡片靠近地图左右边缘时会被
+       水平推移，箭头必须留在标记正上/正下方，不能跟着卡片一起居中。 */
+    left: var(--tm-arrow-left, 50%);
+    bottom: -9px;
+    transform: translateX(-50%);
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-top: 9px solid #fff;
+    filter: drop-shadow(0 3px 2px rgba(0, 0, 0, 0.12));
+    pointer-events: none;
+}
+
+/* 卡片翻到标记下方时（.is-below 由 JS 添加）：箭头移到卡片顶边并朝上。
+   上方放不下就翻到下方，是目标插件（Mapbox Popup 动态锚点）的做法，
+   好处是完全不动地图视野。 */
+.travel-map-popup.is-below::after {
+    bottom: auto;
+    top: -9px;
+    border-top: 0;
+    border-bottom: 9px solid #fff;
+    filter: drop-shadow(0 -3px 2px rgba(0, 0, 0, 0.12));
+}
+
+/* isCustom 模式下隐藏高德默认箭头与关闭钮 */
+.amap-info-sharp,
+.amap-info-close {
+    display: none !important;
+}
+
+.travel-map-popup-close {
+    font-size: 20px;
+    z-index: 20;
+    background-color: #fff;
+    /* 按钮 top:0/right:0 贴在卡片右上角且是白底，右上角必须跟卡片同为 10px。
+       弹窗是 overflow:visible（箭头要露出去），不会替按钮裁圆角，
+       写成 0 会用方角盖掉卡片圆角。左下 10px 是与 header 相接处的内收圆角。 */
+    border-radius: 0 10px 0 10px;
+    position: absolute;
+    top: 0;
+    right: 0;
+    border: 0;
+    cursor: pointer;
+    line-height: 1;
+    padding: 4px 10px;
+}
+
+.travel-map-popup-close:hover {
+    background-color: #f0f0f0;
+}
+
+.travel-map-popup-header {
+    font-weight: 700;
+    padding: 0 0 3px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 10px 10px 0 0;
+}
+
+.travel-map-popup-cover {
+    height: 100px;
+    width: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.travel-map-popup-name {
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--tm-text-color);
+    padding: 12px 12px 0;
     display: flex;
     align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    transition: all 0.2s ease;
 }
 
-.travel-map-simple-popup-close:hover {
-    background: rgba(0, 0, 0, 0.05);
-    color: #6b7280;
+.travel-map-popup-flag {
+    width: 18px;
+    height: 18px;
+    margin-right: 8px;
+    border-radius: 2px;
 }
 
-.travel-map-simple-popup-content {
-    padding-right: 20px;
-}
-
-.travel-map-simple-popup-place {
-    font-size: 13px;
-    font-weight: 600;
-    color: #1f2937;
-    margin-bottom: 3px;
-    line-height: 1.3;
-}
-
-.travel-map-simple-popup-info {
+.travel-map-popup-content {
     font-size: 12px;
-    color: #6b7280;
-    line-height: 1.4;
+    color: var(--tm-text-gray);
+    /* 顶部 0 是规格 §2.5 的实际生效值：目标插件 map.css 里 .markerPro--content 有两条
+       规则，前一条 padding-top:5px（@4266）被后一条 padding 简写（@4602）覆盖，
+       两条都不在 @media 内。列表项自带 3px 上下 padding，间距已足够。 */
+    padding: 0 12px 12px;
 }
 
-.travel-map-simple-popup-info .info-item {
-    margin-bottom: 3px;
+/**
+ * 对齐目标插件 `.markerPro--link`：平时继承内容区灰色、无下划线，
+ * hover 才 #e0700a + 下划线（Marker Pro 没有基础 a 规则，只有 :hover）。
+ *
+ * 选择器带 .travel-map-popup 前缀把权重提到 (0,2,1)：主题 Wing style.css 有
+ * `a{color:#3366ff}` 与 `a:visited{color:#668cff}`（均为 (0,1,1)），
+ * 靠加载顺序赢是脆的——一旦主题改成内联或后置加载，链接就会被染蓝。
+ * :visited 必须显式列出，否则访问过的链接仍会走主题的 #668cff。
+ *
+ * 标题超一行用省略号收在一行内；完整标题由 JS 写在 title 属性上，hover 显示。
+ */
+.travel-map-popup .travel-map-popup-link a,
+.travel-map-popup .travel-map-popup-link a:visited {
+    color: inherit;
+    text-decoration: none;
+    display: block;
+    padding: 3px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.travel-map-simple-popup-info .info-item:last-child {
-    margin-bottom: 0;
+.travel-map-popup .travel-map-popup-link a:hover,
+.travel-map-popup .travel-map-popup-link a:focus {
+    text-decoration: underline;
+    color: var(--tm-hover-color);
 }
 
-/* 简洁弹窗的主题模式适配 */
-/* 深色模式 */
-html.dark .travel-map-simple-popup {
+.travel-map-popup-years {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.travel-map-year-chip {
+    font-size: 12px;
+    background-color: var(--tm-background-gray-lightest);
+    border-radius: 999rem;
+    line-height: 1;
+    padding: 3px 12px;
+    margin-right: 8px;
+    margin-top: 8px;
+    user-select: none;
+}
+
+/* 深色模式弹窗 */
+html.dark .travel-map-popup {
     background: #374151;
-    border-color: #4b5563;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    color: #f3f4f6;
 }
 
-html.dark .travel-map-simple-popup::after {
-    border-top-color: #374151;
-}
-
-html.dark .travel-map-simple-popup.popup-below::after {
+html.dark .travel-map-popup.is-below::after {
     border-bottom-color: #374151;
 }
 
-html.dark .travel-map-simple-popup-close {
-    color: #d1d5db;
+html.dark .travel-map-popup::after {
+    border-top-color: #374151;
 }
 
-html.dark .travel-map-simple-popup-close:hover {
-    background: rgba(255, 255, 255, 0.1);
+html.dark .travel-map-popup-name {
+    color: #f9fafb;
+}
+
+html.dark .travel-map-popup-close {
+    background-color: #374151;
     color: #f3f4f6;
 }
 
-html.dark .travel-map-simple-popup-place {
-    color: #f3f4f6;
-}
-
-html.dark .travel-map-simple-popup-info {
+html.dark .travel-map-popup-content {
     color: #d1d5db;
 }
 
-/* 浅色模式和auto模式默认样式（合并重复规则） */
-html.light .travel-map-simple-popup,
-html.auto .travel-map-simple-popup {
+html.dark .travel-map-year-chip {
+    background-color: #4b5563;
+}
+
+/* ============ 筛选栏 ============ */
+.travel-map-embedded-filters {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
     background: #fff;
-    border-color: #e5e7eb;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border-radius: 10px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    padding: 7px 9px;
+    display: flex;
+    gap: 8px;
+    max-width: calc(100% - 20px);
+    flex-wrap: wrap;
+    justify-content: center;
 }
 
-html.light .travel-map-simple-popup::after,
-html.auto .travel-map-simple-popup::after {
-    border-top-color: #fff;
+.travel-map-filter-tab {
+    border: 0;
+    /* 12px 是规格 §2.6 的字号。这里必须 !important：主题 style.css 有
+       @media (max-width:768px){ input,textarea,select,button{ font-size:1rem !important } }，
+       无 !important 时移动端会被顶成 16px（行高 24px、按钮高 34px）。 */
+    font-size: 12px !important;
+    background-color: var(--tm-background-gray-lightest);
+    color: var(--tm-text-gray);
+    padding: 5px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    line-height: 1.5;
+    transition: background-color 0.18s ease, color 0.18s ease;
 }
 
-html.light .travel-map-simple-popup.popup-below::after,
-html.auto .travel-map-simple-popup.popup-below::after {
-    border-bottom-color: #fff;
+/**
+ * 四个按钮各用一种颜色区分，与地图标记语义对应：
+ * 已去=主色橙、想去=黄（对应黄色标记）、计划=绿、全部=红。
+ * 未选中是淡色底 + 同色文字，选中是实色底 + 白字，
+ * 这样颜色既能区分状态，也仍看得出当前选中项。
+ */
+.travel-map-filter-tab[data-status="all"] {
+    background-color: rgba(220, 38, 38, 0.12);
+    color: #b91c1c;
 }
 
-html.light .travel-map-simple-popup-close,
-html.auto .travel-map-simple-popup-close {
-    color: #9ca3af;
+.travel-map-filter-tab[data-status="done"] {
+    background-color: rgba(192, 88, 12, 0.12);
+    color: var(--tm-main-color);
 }
 
-html.light .travel-map-simple-popup-close:hover,
-html.auto .travel-map-simple-popup-close:hover {
-    background: rgba(0, 0, 0, 0.05);
-    color: #6b7280;
+.travel-map-filter-tab[data-status="wish"] {
+    background-color: rgba(202, 138, 4, 0.14);
+    color: #a16207;
 }
 
-html.light .travel-map-simple-popup-place,
-html.auto .travel-map-simple-popup-place {
-    color: #1f2937;
+.travel-map-filter-tab[data-status="plan"] {
+    background-color: rgba(5, 150, 105, 0.12);
+    color: #047857;
 }
 
-html.light .travel-map-simple-popup-info,
-html.auto .travel-map-simple-popup-info {
-    color: #6b7280;
+.travel-map-filter-tab[data-status="all"]:hover,
+.travel-map-filter-tab[data-status="all"].active {
+    background-color: #dc2626;
+    color: #fff;
 }
 
-@media (prefers-color-scheme: dark) {
-    html.auto .travel-map-simple-popup {
-        background: #374151;
-        border-color: #4b5563;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+.travel-map-filter-tab[data-status="done"]:hover,
+.travel-map-filter-tab[data-status="done"].active {
+    background-color: var(--tm-main-color);
+    color: #fff;
+}
+
+.travel-map-filter-tab[data-status="wish"]:hover,
+.travel-map-filter-tab[data-status="wish"].active {
+    background-color: #ca8a04;
+    color: #fff;
+}
+
+.travel-map-filter-tab[data-status="plan"]:hover,
+.travel-map-filter-tab[data-status="plan"].active {
+    background-color: #059669;
+    color: #fff;
+}
+
+.travel-map-filter-tab.active {
+    cursor: not-allowed;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+}
+
+html.dark .travel-map-embedded-filters {
+    background: rgba(55, 65, 81, 0.95);
+}
+
+/* 深色底上淡色底对比不足，未选中改用更实的半透明底 + 亮色文字 */
+html.dark .travel-map-filter-tab[data-status="all"] {
+    background-color: rgba(220, 38, 38, 0.28);
+    color: #fecaca;
+}
+
+html.dark .travel-map-filter-tab[data-status="done"] {
+    background-color: rgba(224, 112, 10, 0.28);
+    color: #fed7aa;
+}
+
+html.dark .travel-map-filter-tab[data-status="wish"] {
+    background-color: rgba(202, 138, 4, 0.3);
+    color: #fde68a;
+}
+
+html.dark .travel-map-filter-tab[data-status="plan"] {
+    background-color: rgba(5, 150, 105, 0.28);
+    color: #a7f3d0;
+}
+
+html.dark .travel-map-filter-tab.active {
+    color: #fff;
+}
+
+/* ============ 统计面板 ============ */
+.travel-map-stats-panel,
+.travel-map-year-panel {
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+    background: rgba(0, 0, 0, 0.65);
+    color: #fff;
+    font-size: 12px;
+    line-height: 1.4;
+    padding: 8px 10px;
+    border-radius: 6px;
+    display: flex;
+    gap: 10px;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 3;
+}
+
+.travel-map-year-panel {
+    left: 10px;
+    right: auto;
+    max-width: 150px;
+    flex-wrap: wrap;
+}
+
+.travel-map-year-panel span {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    opacity: 0.75;
+}
+
+.travel-map-year-panel span em {
+    font-style: normal;
+}
+
+.travel-map-year-panel span strong {
+    font-size: 13px;
+    color: #fff;
+}
+
+.travel-map-stats-panel span {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    opacity: 0.75;
+}
+
+.travel-map-stats-panel span.active {
+    opacity: 1;
+    font-weight: 600;
+}
+
+.travel-map-stats-panel span strong {
+    font-size: 13px;
+    color: #fff;
+}
+
+.travel-map-stats-panel span.total,
+.travel-map-year-panel span.total {
+    margin-left: 4px;
+    opacity: 1;
+    font-weight: 600;
+}
+
+.travel-map-stats-panel span.total strong,
+.travel-map-year-panel span.total strong {
+    color: #4dd2ff;
+}
+
+/* ============ 无障碍等价列表 ============ */
+.travel-map-accessibility {
+    position: absolute !important;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* ============ [travel_map_countries] 国旗墙 ============ */
+.travel-map-countries {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 10px 0 20px;
+}
+
+.travel-map-country-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #f9f9f9;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+}
+
+.travel-map-country-flag {
+    width: 22px;
+    height: 22px;
+    border-radius: 3px;
+    display: block;
+}
+
+.travel-map-country-code {
+    font-weight: 600;
+    color: var(--tm-text-color);
+}
+
+.travel-map-country-count {
+    background: var(--tm-main-color);
+    color: #fff;
+    border-radius: 999rem;
+    font-size: 11px;
+    line-height: 1;
+    padding: 3px 8px;
+}
+
+.travel-map-countries-empty {
+    font-size: 13px;
+    color: #999;
+}
+
+/* ============ [travel_map_markers] 标记归档列表 ============ */
+.travel-map-markers-archive {
+    margin: 10px 0 20px;
+}
+
+.marker-item {
+    background-color: var(--tm-background-gray-lightest);
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.marker-name {
+    display: flex;
+    align-items: center;
+    font-weight: 700;
+    margin-bottom: 15px;
+}
+
+.marker-name .marker-flag {
+    width: 22px;
+    height: 22px;
+    margin-right: 10px;
+    border-radius: 2px;
+}
+
+.marker-coords {
+    display: flex;
+    align-items: center;
+    font-size: 12px;
+    color: rgba(0, 0, 0, 0.55);
+    margin-left: auto;
+    font-weight: 400;
+    user-select: none;
+}
+
+.marker-coords svg {
+    stroke: rgba(0, 0, 0, 0.55);
+    margin-right: 3px;
+}
+
+.marker-posts {
+    --tm-post-grid: 3;
+    display: grid;
+    grid-template-columns: repeat(var(--tm-post-grid), 1fr);
+    gap: 15px;
+}
+
+.marker-post {
+    display: block;
+    text-decoration: none;
+}
+
+.marker-post img {
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 10px;
+    display: block;
+}
+
+.marker-postTitle {
+    font-size: 14px;
+    color: var(--tm-text-color);
+    margin-top: 8px;
+    text-decoration: none;
+}
+
+.marker-postTitle:hover {
+    color: var(--tm-main-color);
+}
+
+@media (max-width: 900px) {
+    .marker-posts {
+        --tm-post-grid: 2;
     }
-    
-    html.auto .travel-map-simple-popup::after {
-        border-top-color: #374151;
-    }
-    
-    html.auto .travel-map-simple-popup.popup-below::after {
-        border-bottom-color: #374151;
-    }
-    
-    html.auto .travel-map-simple-popup-close {
-        color: #d1d5db;
-    }
-    
-    html.auto .travel-map-simple-popup-close:hover {
-        background: rgba(255, 255, 255, 0.1);
-        color: #f3f4f6;
-    }
-    
-    html.auto .travel-map-simple-popup-place {
-        color: #f3f4f6;
-    }
-    
-    html.auto .travel-map-simple-popup-info {
-        color: #d1d5db;
+}
+
+@media (max-width: 600px) {
+    .marker-posts {
+        --tm-post-grid: 1;
     }
 }
 
-/* 自定义弹窗的主题模式适配 */
-/* 深色模式 */
-html.dark .travel-map-custom-popup {
-    background: #374151 !important;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+.travel-map-markers-empty {
+    font-size: 13px;
+    color: #999;
 }
 
-html.dark .travel-map-custom-popup::after {
-    border-top-color: #374151 !important;
-}
-
-html.dark .travel-map-custom-popup.popup-below::after {
-    border-bottom-color: #374151 !important;
-}
-
-html.dark .travel-map-custom-popup .travel-map-popup-close {
-    background: rgba(55, 65, 81, 0.9) !important;
-    color: #e2e8f0 !important;
-    border-color: #4b5563 !important;
-}
-
-html.dark .travel-map-custom-popup .travel-map-popup-close:hover {
-    background: #4b5563 !important;
-    border-color: #6b7280 !important;
-    color: #f3f4f6 !important;
-}
-
-html.dark .travel-map-custom-popup .popup-location {
-    background: #4b5563 !important;
-    border-bottom-color: #6b7280 !important;
-}
-
-html.dark .travel-map-custom-popup .location-name {
-    color: #f3f4f6 !important;
-}
-
-html.dark .travel-map-custom-popup .popup-article {
-    color: #e2e8f0 !important;
-}
-
-html.dark .travel-map-custom-popup .popup-article:hover {
-    background: #4b5563 !important;
-}
-
-html.dark .travel-map-custom-popup .popup-article .article-title {
-    color: #e2e8f0 !important;
-}
-
-html.dark .travel-map-custom-popup .popup-article .article-date {
-    color: #9ca3af !important;
-}
-
-html.dark .travel-map-custom-popup .info-text {
-    color: #d1d5db !important;
-}
-
-/* 深色模式下的信息项样式 */
-html.dark .travel-map-custom-popup .info-item {
-    color: #d1d5db !important;
-}
-
-html.dark .travel-map-custom-popup .info-item.wish-reason {
-    color: #60a5fa !important;
-}
-
-html.dark .travel-map-custom-popup .info-item.description {
-    color: #e5e7eb !important;
-}
-
-/* 浅色模式和auto模式默认样式（合并重复规则） */
-html.light .travel-map-custom-popup,
-html.auto .travel-map-custom-popup {
-    background: #ffffff !important;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-html.light .travel-map-custom-popup::after,
-html.auto .travel-map-custom-popup::after {
-    border-top-color: #ffffff !important;
-}
-
-html.light .travel-map-custom-popup.popup-below::after,
-html.auto .travel-map-custom-popup.popup-below::after {
-    border-bottom-color: #ffffff !important;
-}
-
-html.light .travel-map-custom-popup .travel-map-popup-close,
-html.auto .travel-map-custom-popup .travel-map-popup-close {
-    background: rgba(255,255,255,0.9) !important;
-    color: #666 !important;
-    border-color: #ddd !important;
-}
-
-html.light .travel-map-custom-popup .travel-map-popup-close:hover,
-html.auto .travel-map-custom-popup .travel-map-popup-close:hover {
-    background: #f0f0f0 !important;
-    border-color: #ccc !important;
-    color: #333 !important;
-}
-
-html.light .travel-map-custom-popup .popup-location,
-html.auto .travel-map-custom-popup .popup-location {
-    background: #fafafa !important;
-    border-bottom-color: #e8e8e8 !important;
-}
-
-html.light .travel-map-custom-popup .location-name,
-html.auto .travel-map-custom-popup .location-name,
-html.light .travel-map-custom-popup .popup-article,
-html.auto .travel-map-custom-popup .popup-article {
-    color: #333 !important;
-}
-
-html.light .travel-map-custom-popup .popup-article:hover,
-html.auto .travel-map-custom-popup .popup-article:hover {
-    background: #f0f0f0 !important;
-}
-
-html.light .travel-map-custom-popup .popup-article .article-title,
-html.auto .travel-map-custom-popup .popup-article .article-title {
-    color: #222 !important;
-}
-
-html.light .travel-map-custom-popup .popup-article .article-date,
-html.auto .travel-map-custom-popup .popup-article .article-date {
-    color: #999 !important;
-}
-
-html.light .travel-map-custom-popup .info-text,
-html.auto .travel-map-custom-popup .info-text,
-html.light .travel-map-custom-popup .info-item,
-html.auto .travel-map-custom-popup .info-item {
-    color: #666 !important;
-}
-
-html.light .travel-map-custom-popup .info-item.wish-reason,
-html.auto .travel-map-custom-popup .info-item.wish-reason {
-    color: #1e40af !important;
-}
-
-html.light .travel-map-custom-popup .info-item.description,
-html.auto .travel-map-custom-popup .info-item.description {
-    color: #374151 !important;
-}
-
-@media (prefers-color-scheme: dark) {
-    html.auto .travel-map-custom-popup {
-        background: #374151 !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    }
-    
-    html.auto .travel-map-custom-popup::after {
-        border-top-color: #374151 !important;
-    }
-    
-    html.auto .travel-map-custom-popup.popup-below::after {
-        border-bottom-color: #374151 !important;
-    }
-    
-    html.auto .travel-map-custom-popup .travel-map-popup-close {
-        background: rgba(55, 65, 81, 0.9) !important;
-        color: #e2e8f0 !important;
-        border-color: #4b5563 !important;
-    }
-    
-    html.auto .travel-map-custom-popup .travel-map-popup-close:hover {
-        background: #4b5563 !important;
-        border-color: #6b7280 !important;
-        color: #f3f4f6 !important;
-    }
-    
-    html.auto .travel-map-custom-popup .popup-location {
-        background: #4b5563 !important;
-        border-bottom-color: #6b7280 !important;
-    }
-    
-    html.auto .travel-map-custom-popup .location-name {
-        color: #f3f4f6 !important;
-    }
-    
-    html.auto .travel-map-custom-popup .popup-article {
-        color: #e2e8f0 !important;
-    }
-    
-    html.auto .travel-map-custom-popup .popup-article:hover {
-        background: #4b5563 !important;
-    }
-    
-    html.auto .travel-map-custom-popup .popup-article .article-title {
-        color: #e2e8f0 !important;
-    }
-    
-    html.auto .travel-map-custom-popup .popup-article .article-date {
-        color: #9ca3af !important;
-    }
-    
-    html.auto .travel-map-custom-popup .info-text {
-        color: #d1d5db !important;
-    }
-    
-    /* auto模式深色下的信息项样式 */
-    html.auto .travel-map-custom-popup .info-item {
-        color: #d1d5db !important;
-    }
-    
-    html.auto .travel-map-custom-popup .info-item.wish-reason {
-        color: #60a5fa !important;
-    }
-    
-    html.auto .travel-map-custom-popup .info-item.description {
-        color: #e5e7eb !important;
-    }
-}
-
-/* 响应式设计 */
+/* ============ 响应式 ============ */
 @media (max-width: 768px) {
     .travel-map-container {
-        --travel-map-control-size: 36px;
-        --travel-map-control-icon: 18px;
-    }
-
-    .travel-map-filters {
-        padding: 8px 12px;
-        gap: 6px;
-    }
-    
-    .travel-map-embedded-filters {
-        top: 8px;
-        padding: 6px 10px;
-        gap: 4px;
-        border-radius: 16px;
-        left: 50%;
-        transform: translateX(-50%);
-        max-width: calc(100% - 120px); /* 留出空间给右侧控制按钮 */
-        right: auto;
-    }
-    
-    .travel-map-filter-tab {
-        padding: 5px 10px;
-        font-size: 11px;
-        min-height: 24px;
-        border-radius: 16px;
-    }
-    
-    .travel-map-controls {
-        top: 8px;
-        right: 8px;
-    }
-    
-    .travel-map-control-btn {
-        width: var(--travel-map-control-size);
-        height: var(--travel-map-control-size);
-    }
-    
-    .travel-map-control-btn svg {
-        width: var(--travel-map-control-icon);
-        height: var(--travel-map-control-icon);
-    }
-    
-    .travel-map-popup-content {
-        width: 95%;
-        max-width: 340px;
-    }
-    
-    .travel-map-popup-image {
-        height: 150px;
-    }
-    
-    .travel-map-simple-popup {
-        min-width: 250px;
-        max-width: 280px;
-        padding: 12px;
-    }
-    
-    .travel-map-error {
-        padding: 24px 16px;
-    }
-    
-    .travel-map-error-icon {
-        font-size: 36px;
-    }
-}
-
-/* iOS Safari 图标尺寸修正 */
-@supports (-webkit-touch-callout: none) {
-    .travel-map-container {
-        --travel-map-control-icon: 20px;
+        height: auto;
+        aspect-ratio: 1 / 1.3;
+        min-height: 400px;
     }
 }
 
 @media (max-width: 480px) {
-    .travel-map-filters {
-        padding: 6px 8px;
-        gap: 4px;
+    .travel-map-container {
+        aspect-ratio: 1 / 1.5;
+        min-height: 350px;
     }
-    
+
+    .travel-map-wrapper,
+    .travel-map {
+        min-height: 350px;
+    }
+}
+
+/**
+ * 横屏手机 / 矮视口：宽度常 > 768px 会落进桌面分支拿到固定 550px 高，
+ * 但可视高度只有 ~390px，地图会高过屏幕把控件推出视口。
+ * 这里按视口高度收敛，并解掉 wrapper 的 min-height 强制撑高。
+ * dvh 覆盖 vh 以规避移动浏览器动态工具栏；不支持 dvh 时自动退回 vh。
+ */
+@media (max-height: 500px) {
+    .travel-map-container {
+        height: 88vh;
+        height: 88dvh;
+        aspect-ratio: auto;
+        min-height: 240px;
+    }
+
+    .travel-map-wrapper,
+    .travel-map {
+        min-height: 0;
+    }
+
+    /* 矮屏下筛选栏与统计面板同时贴边会挤掉地图可视区，收紧内距 */
     .travel-map-embedded-filters {
         top: 6px;
-        padding: 4px 8px;
-        gap: 3px;
-        border-radius: 14px;
-        left: 50%;
-        transform: translateX(-50%);
-        max-width: calc(100% - 100px); /* 留出空间给右侧控制按钮 */
-        right: auto;
+        padding: 5px 7px;
     }
-    
-    .travel-map-filter-tab {
-        padding: 4px 8px;
-        font-size: 10px;
-        min-height: 20px;
-        border-radius: 12px;
-    }
-    
-    .travel-map-error {
-        padding: 16px 12px;
-        font-size: 13px;
-    }
-    
-    .travel-map-error-message {
-        font-size: 14px;
-    }
-    
-    .travel-map-error-icon {
-        font-size: 28px;
-        margin-bottom: 12px;
+
+    .travel-map-stats-panel,
+    .travel-map-year-panel {
+        bottom: 6px;
+        padding: 5px 8px;
     }
 }
 
-/* 统一的弹窗箭头样式 - 最高优先级 */
-.travel-map-enhanced-popup::after,
-.travel-map-custom-popup::after {
-    content: '' !important;
-    position: absolute !important;
-    top: 100% !important;
-    left: 50% !important;
-    margin-left: -6px !important; /* 箭头宽度的一半 */
-    width: 0 !important;
-    height: 0 !important;
-    border-left: 6px solid transparent !important; /* 缩小箭头宽度 */
-    border-right: 6px solid transparent !important;
-    border-top: 6px solid #ffffff !important; /* 缩小箭头高度 */
-    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.15)) !important; /* 减小阴影偏移 */
-    z-index: 10002 !important;
-}
+/**
+ * ============ auto 模式深色（跟随系统） ============
+ *
+ * 主题的皮肤模式有三档 auto/light/dark，默认是 auto，且 auto 由 CSS
+ * 声明式处理：主题自己在 @media (prefers-color-scheme: dark) 里写 html.auto 规则，
+ * html 的 class 始终停在 "auto" 不变。
+ *
+ * 而插件原本 15 条深色规则全部只挂 html.dark，auto 档一条都不匹配，
+ * 于是系统深色下「主题变深、插件覆盖层仍纯白」。这里补齐 auto 档，
+ * 颜色值与上方 html.dark 各条严格一一对应。
+ */
+@media (prefers-color-scheme: dark) {
+    html.auto .travel-map-container {
+        background: #1f2937;
+        color: #f3f4f6;
+    }
 
-.travel-map-enhanced-popup.popup-below::after,
-.travel-map-custom-popup.popup-below::after {
-    top: -6px !important; /* 调整为箭头高度 */
-    border-top: none !important;
-    border-bottom: 6px solid #ffffff !important;
-}
+    html.auto .travel-map-control-btn {
+        background: #374151;
+    }
 
-/* 深色模式箭头颜色 */
-html.dark .travel-map-enhanced-popup::after,
-html.dark .travel-map-custom-popup::after {
-    border-top-color: #2d3748 !important;
-}
+    html.auto .travel-map-control-btn svg {
+        color: #d1d5db;
+    }
 
-html.dark .travel-map-enhanced-popup.popup-below::after,
-html.dark .travel-map-custom-popup.popup-below::after {
-    border-bottom-color: #2d3748 !important;
-}
+    html.auto .travel-map-popup {
+        background: #374151;
+        color: #f3f4f6;
+    }
 
-/* ========================================
-   移动端响应式弹窗样式
-   ======================================== */
+    html.auto .travel-map-popup.is-below::after {
+        border-bottom-color: #374151;
+    }
 
-/* 平板和移动设备（宽度 ≤ 768px） */
-@media (max-width: 768px) {
-    /* 增强型弹窗 - 移动端缩小 */
-    .travel-map-enhanced-popup {
-        min-width: 160px !important;
-        max-width: 200px !important;
+    html.auto .travel-map-popup::after {
+        border-top-color: #374151;
     }
-    
-    .travel-map-enhanced-popup .popup-header-image {
-        height: 100px !important;
-    }
-    
-    .travel-map-enhanced-popup .popup-location-header {
-        padding: 6px 10px 4px 10px !important;
-    }
-    
-    .travel-map-enhanced-popup .location-flag {
-        font-size: 13px !important;
-    }
-    
-    .travel-map-enhanced-popup .location-name {
-        font-size: 13px !important;
-    }
-    
-    .travel-map-enhanced-popup .popup-articles-list {
-        padding: 0 10px 10px 10px !important;
-        max-height: 120px !important;
-    }
-    
-    .travel-map-enhanced-popup .popup-article-item {
-        font-size: 11px !important;
-        padding: 3px 0 !important;
-    }
-    
-    .travel-map-enhanced-popup .travel-map-popup-close {
-        width: 18px !important;
-        height: 18px !important;
-        font-size: 11px !important;
-        top: 5px !important;
-        right: 5px !important;
-    }
-    
-    /* 自定义弹窗 - 移动端缩小 */
-    .travel-map-custom-popup {
-        min-width: 160px !important;
-        max-width: 200px !important;
-    }
-    
-    .travel-map-custom-popup .popup-location {
-        padding: 5px 8px 3px 8px !important;
-    }
-    
-    .travel-map-custom-popup .location-flag {
-        font-size: 11px !important;
-    }
-    
-    .travel-map-custom-popup .location-name {
-        font-size: 11px !important;
-    }
-    
-    .travel-map-custom-popup .popup-articles {
-        padding: 3px 6px 5px 6px !important;
-        max-height: 100px !important;
-    }
-    
-    .travel-map-custom-popup .popup-article {
-        padding: 2px 3px !important;
-    }
-    
-    .travel-map-custom-popup .popup-article .article-title {
-        font-size: 10px !important;
-    }
-    
-    .travel-map-custom-popup .popup-article .article-date {
-        font-size: 8px !important;
-    }
-    
-    .travel-map-custom-popup .info-item {
-        font-size: 9px !important;
-    }
-    
-    .travel-map-custom-popup .travel-map-popup-close {
-        width: 18px !important;
-        height: 18px !important;
-        font-size: 11px !important;
-        top: 5px !important;
-        right: 5px !important;
-    }
-    
-    /* 简洁弹窗 - 移动端缩小 */
-    .travel-map-simple-popup {
-        min-width: 150px !important;
-        max-width: 190px !important;
-        padding: 10px 12px !important;
-    }
-    
-    .travel-map-simple-popup-place {
-        font-size: 12px !important;
-    }
-    
-    .travel-map-simple-popup-info {
-        font-size: 11px !important;
-    }
-    
-    .travel-map-simple-popup-close {
-        width: 16px !important;
-        height: 16px !important;
-        font-size: 13px !important;
-        top: 3px !important;
-        right: 3px !important;
-    }
-    
-    /* 悬停预览 - 移动端缩小 */
-    .hover-preview-content {
-        width: 100px !important;
-    }
-    
-    .hover-preview-content img {
-        height: 70px !important;
-    }
-    
-    .hover-preview-title {
-        font-size: 11px !important;
-        padding: 6px 8px !important;
-    }
-}
 
-/* 小屏手机（宽度 ≤ 480px） */
-@media (max-width: 480px) {
-    /* 增强型弹窗 - 进一步缩小 */
-    .travel-map-enhanced-popup {
-        min-width: 140px !important;
-        max-width: 180px !important;
+    html.auto .travel-map-popup-name {
+        color: #f9fafb;
     }
-    
-    .travel-map-enhanced-popup .popup-header-image {
-        height: 80px !important;
+
+    html.auto .travel-map-popup-close {
+        background-color: #374151;
+        color: #f3f4f6;
     }
-    
-    .travel-map-enhanced-popup .location-name {
-        font-size: 12px !important;
+
+    html.auto .travel-map-popup-content {
+        color: #d1d5db;
     }
-    
-    .travel-map-enhanced-popup .popup-article-item {
-        font-size: 10px !important;
+
+    html.auto .travel-map-year-chip {
+        background-color: #4b5563;
     }
-    
-    /* 自定义弹窗 - 进一步缩小 */
-    .travel-map-custom-popup {
-        min-width: 140px !important;
-        max-width: 180px !important;
+
+    html.auto .travel-map-embedded-filters {
+        background: rgba(55, 65, 81, 0.95);
     }
-    
-    .travel-map-custom-popup .location-name {
-        font-size: 10px !important;
+
+    html.auto .travel-map-filter-tab[data-status="all"] {
+        background-color: rgba(220, 38, 38, 0.28);
+        color: #fecaca;
     }
-    
-    .travel-map-custom-popup .popup-article .article-title {
-        font-size: 9px !important;
+
+    html.auto .travel-map-filter-tab[data-status="done"] {
+        background-color: rgba(224, 112, 10, 0.28);
+        color: #fed7aa;
     }
-    
-    .travel-map-custom-popup .info-item {
-        font-size: 8px !important;
+
+    html.auto .travel-map-filter-tab[data-status="wish"] {
+        background-color: rgba(202, 138, 4, 0.3);
+        color: #fde68a;
     }
-    
-    /* 简洁弹窗 - 进一步缩小 */
-    .travel-map-simple-popup {
-        min-width: 130px !important;
-        max-width: 170px !important;
-        padding: 8px 10px !important;
+
+    html.auto .travel-map-filter-tab[data-status="plan"] {
+        background-color: rgba(5, 150, 105, 0.28);
+        color: #a7f3d0;
     }
-    
-    .travel-map-simple-popup-place {
-        font-size: 11px !important;
-    }
-    
-    .travel-map-simple-popup-info {
-        font-size: 10px !important;
+
+    html.auto .travel-map-filter-tab.active {
+        color: #fff;
     }
 }

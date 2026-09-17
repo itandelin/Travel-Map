@@ -67,7 +67,7 @@
         }
         const style = document.createElement('style');
         style.dataset.travelMapInline = '1';
-        style.textContent = '.travel-map-container{width:100%;height:var(--travel-map-height,500px);position:relative;overflow:hidden;background:#f5f5f5}.travel-map-wrapper,.travel-map{width:100%;height:100%;min-height:300px}.travel-map-loading{position:absolute;top:0;right:0;bottom:0;left:0;display:flex;align-items:center;justify-content:center;flex-direction:column;background:#f5f5f5;z-index:1000}.travel-map-controls{position:absolute;top:12px;right:12px;z-index:1000;display:flex;flex-direction:column;gap:8px}.travel-map-control-btn{width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid #d1d5db;border-radius:6px;padding:0}.travel-map-control-btn svg{width:20px;height:20px;display:block}.travel-map-accessibility{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}';
+        style.textContent = '.travel-map-container{width:100%;height:var(--travel-map-height,550px);position:relative;overflow:hidden;background:#f5f5f5;border-radius:10px;margin-bottom:20px}.travel-map-wrapper,.travel-map{width:100%;height:100%;min-height:400px}@media (max-width:768px){.travel-map-container{height:auto;aspect-ratio:1/1.3;min-height:400px}}@media (max-width:480px){.travel-map-container{aspect-ratio:1/1.5;min-height:350px}.travel-map-wrapper,.travel-map{min-height:350px}}.travel-map-loading{position:absolute;top:0;right:0;bottom:0;left:0;display:flex;align-items:center;justify-content:center;flex-direction:column;background:#f5f5f5;z-index:1000}.travel-map-controls{position:absolute;top:10px;right:10px;z-index:1000;display:flex;flex-direction:column;gap:8px}.travel-map-control-btn{width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:#fff;border:0;border-radius:6px;padding:0;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.05)}.travel-map-control-btn svg{width:18px;height:18px;display:block;color:#333}.travel-map-embedded-filters{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:10;background:#fff;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.05);padding:7px 9px;display:flex;gap:8px;max-width:calc(100% - 20px);flex-wrap:wrap;justify-content:center}.travel-map-filter-tab{border:0;font-size:12px !important;background-color:#f9f9f9;color:#555;padding:5px 12px;border-radius:10px;cursor:pointer;line-height:1.5}.travel-map-filter-tab[data-status="all"]{background-color:rgba(220,38,38,.12);color:#b91c1c}.travel-map-filter-tab[data-status="done"]{background-color:rgba(192,88,12,.12);color:#c0580c}.travel-map-filter-tab[data-status="wish"]{background-color:rgba(202,138,4,.14);color:#a16207}.travel-map-filter-tab[data-status="plan"]{background-color:rgba(5,150,105,.12);color:#047857}.travel-map-filter-tab[data-status="all"].active{background-color:#dc2626;color:#fff}.travel-map-filter-tab[data-status="done"].active{background-color:#c0580c;color:#fff}.travel-map-filter-tab[data-status="wish"].active{background-color:#ca8a04;color:#fff}.travel-map-filter-tab[data-status="plan"].active{background-color:#059669;color:#fff}.travel-map-filter-tab.active{cursor:not-allowed}.travel-map-accessibility{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}';
         document.head.appendChild(style);
     };
 
@@ -158,6 +158,12 @@
             window._AMapSecurityConfig = { securityJsCode: cfg.securityKey };
         }
 
+        // Safari(Mac/Retina) 下高德 2.0 的 WebGL 判定会被 4096 钳制误杀(详见 travel-map.php
+        // get_safari_retina_fix_script 注释)。SDK 为动态注入时,守卫逻辑需要在注入前同步执行。
+        if (!window.travelMapSafariRetinaFixApplied && typeof window.travelMapApplySafariRetinaFix === 'function') {
+            window.travelMapApplySafariRetinaFix();
+        }
+
         const tasks = [];
         if (!window.AMap && apiScriptUrl) {
             tasks.push(loadScript(apiScriptUrl, { 'data-travel-map': 'amap' }));
@@ -244,8 +250,15 @@
         const centerLat = getNumber(mapEl.dataset.centerLat, 35.0);
         const centerLng = getNumber(mapEl.dataset.centerLng, 105.0);
         const showFilterTabs = parseBool(mapEl.dataset.showFilterTabs);
-        const defaultStatus = mapEl.dataset.status || 'all';
+        // 空串兜底而非 'all'：data-status 为空代表短代码没写 status，
+        // 此时必须让位给后台设置项 travel_map_default_filter_status。
+        const defaultStatus = mapEl.dataset.status || '';
+        const filters = mapEl.dataset.filters || null;
         const apiKey = mapEl.dataset.apiKey || (window.travelMapAjax ? window.travelMapAjax.apiKey : '');
+        let autoZoom = null;
+        if (mapEl.dataset.autoZoom !== undefined && mapEl.dataset.autoZoom !== '') {
+            autoZoom = parseBool(mapEl.dataset.autoZoom);
+        }
 
         try {
             window.initTravelMap('#' + id, {
@@ -253,6 +266,8 @@
                 center: [centerLng, centerLat],
                 showFilterTabs: showFilterTabs,
                 defaultStatus: defaultStatus,
+                filters: filters,
+                autoZoom: autoZoom,
                 apiKey: apiKey
             });
             mapEl.dataset.travelMapInitialized = '1';

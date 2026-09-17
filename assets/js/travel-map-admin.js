@@ -467,8 +467,8 @@
         }
         
         bulkStatusChange() {
-            const newStatus = prompt('请输入新状态 (visited/want_to_go/planned):');
-            if (!newStatus || !['visited', 'want_to_go', 'planned'].includes(newStatus)) {
+            const newStatus = prompt('请输入新状态 (done/wish/plan):');
+            if (!newStatus || !['done', 'wish', 'plan'].includes(newStatus)) {
                 alert('状态格式不正确');
                 return;
             }

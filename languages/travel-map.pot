@@ -6,7 +6,7 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: Travel Map 1.0.0\n"
+"Project-Id-Version: Travel Map 1.1.0\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2024-01-01 00:00+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -106,3 +106,630 @@ msgstr ""
 
 msgid "示例用法"
 msgstr ""
+msgid "地图初始化失败"
+msgstr ""
+
+msgid "地图脚本加载失败"
+msgstr ""
+
+msgid "可能的解决方案："
+msgstr ""
+
+msgid "检查网络连接是否正常"
+msgstr ""
+
+msgid "确认高德地图API密钥配置正确"
+msgstr ""
+
+msgid "刷新页面重试"
+msgstr ""
+
+msgid "刷新页面"
+msgstr ""
+
+msgid "✓ 代码已复制到剪贴板"
+msgstr ""
+
+msgid "✗ 复制失败，请手动复制"
+msgstr ""
+
+msgid "暂无数据"
+msgstr ""
+
+msgid "无"
+msgstr ""
+
+msgid "保存中..."
+msgstr ""
+
+msgid "保存成功！"
+msgstr ""
+
+msgid "保存失败："
+msgstr ""
+
+msgid "未知错误"
+msgstr ""
+
+msgid "网络请求失败"
+msgstr ""
+
+msgid "已加载编辑数据"
+msgstr ""
+
+msgid "获取数据失败"
+msgstr ""
+
+msgid "请选择要删除的标记点"
+msgstr ""
+
+msgid "确定要删除这个地点吗？此操作不可撤销。"
+msgstr ""
+
+msgid "删除成功"
+msgstr ""
+
+msgid "删除失败："
+msgstr ""
+
+msgid "导入成功"
+msgstr ""
+
+msgid "导入失败："
+msgstr ""
+
+msgid "请先配置API密钥并刷新页面"
+msgstr ""
+
+msgid "添加新地点"
+msgstr ""
+
+msgid "编辑地点"
+msgstr ""
+
+msgid "添加坐标"
+msgstr ""
+
+msgid "更新坐标"
+msgstr ""
+
+msgid "编辑"
+msgstr ""
+
+msgid "旅行地图"
+msgstr ""
+
+msgid "互动式旅行地图，展示已去、想去和计划的旅行目的地"
+msgstr ""
+
+msgid "标记点更新成功"
+msgstr ""
+
+msgid "标记点更新失败"
+msgstr ""
+
+msgid "文章不存在"
+msgstr ""
+
+msgid "标记点ID不能为空"
+msgstr ""
+
+msgid "标记点不存在"
+msgstr ""
+
+msgid "状态不正确"
+msgstr ""
+
+msgid "请选择文件"
+msgstr ""
+
+msgid "不支持的文件格式"
+msgstr ""
+
+msgid "没有可导入的数据"
+msgstr ""
+
+msgid "旅行地点坐标"
+msgstr ""
+
+msgid "标记点添加成功"
+msgstr ""
+
+msgid "标记点添加失败"
+msgstr ""
+
+msgid "暂无符合条件的地点。"
+msgstr ""
+
+msgid "还没有已去国家的记录。为地点填写国别（ISO 代码）后，这里会展示你的足迹国家。"
+msgstr ""
+
+msgid "管理您的旅行地点标记"
+msgstr ""
+
+msgid "地点列表"
+msgstr ""
+
+msgid "导出"
+msgstr ""
+
+msgid "导入"
+msgstr ""
+
+msgid "筛选状态"
+msgstr ""
+
+msgid "所有状态"
+msgstr ""
+
+msgid "搜索地点"
+msgstr ""
+
+msgid "输入地点名称..."
+msgstr ""
+
+msgid "地点名称"
+msgstr ""
+
+msgid "状态"
+msgstr ""
+
+msgid "国别"
+msgstr ""
+
+msgid "坐标"
+msgstr ""
+
+msgid "关联文章"
+msgstr ""
+
+msgid "创建时间"
+msgstr ""
+
+msgid "操作"
+msgstr ""
+
+msgid "地图选点"
+msgstr ""
+
+msgid "点击地图选择坐标位置，或手动输入经纬度"
+msgstr ""
+
+msgid "纬度"
+msgstr ""
+
+msgid "经度"
+msgstr ""
+
+msgid "旅行状态"
+msgstr ""
+
+msgid "国别 (ISO 代码)"
+msgstr ""
+
+msgid "两位/三位 ISO 代码，多国逗号分隔；用于国旗与国家高亮"
+msgstr ""
+
+msgid "到访年份"
+msgstr ""
+
+msgid "多个年份逗号分隔，支持多次到访"
+msgstr ""
+
+msgid "分类"
+msgstr ""
+
+msgid "封面图"
+msgstr ""
+
+msgid "媒体库"
+msgstr ""
+
+msgid "留空时前台自动使用关联文章的特色图"
+msgstr ""
+
+msgid "无关联文章"
+msgstr ""
+
+msgid "访问日期"
+msgstr ""
+
+msgid "未填写到访年份时，以此日期推导年份"
+msgstr ""
+
+msgid "计划日期"
+msgstr ""
+
+msgid "想去理由"
+msgstr ""
+
+msgid "地点描述"
+msgstr ""
+
+msgid "删除"
+msgstr ""
+
+msgid "重置"
+msgstr ""
+
+msgid "您没有编辑权限，只能查看地点信息。"
+msgstr ""
+
+msgid "导入数据"
+msgstr ""
+
+msgid "选择文件"
+msgstr ""
+
+msgid "支持 CSV, JSON, GeoJSON 格式"
+msgstr ""
+
+msgid "WGS-84 坐标纠偏"
+msgstr ""
+
+msgid "数据来自 Google Maps 等国际地图（WGS-84）时勾选：境内坐标将自动转换为高德坐标系（GCJ-02），海外坐标保持不变。默认关闭。"
+msgstr ""
+
+msgid "取消"
+msgstr ""
+
+msgid "Travel Map 设置"
+msgstr ""
+
+msgid "配置高德地图API和基本显示选项"
+msgstr ""
+
+msgid "API 配置"
+msgstr ""
+
+msgid "申请 Web 端 (JS API) 的 Key"
+msgstr ""
+
+msgid "高德地图安全密钥"
+msgstr ""
+
+msgid "请输入高德地图安全密钥 (Security Key)"
+msgstr ""
+
+msgid "2021年12月02日以后申请的 Key 必须配合安全密钥使用。请在"
+msgstr ""
+
+msgid "获取安全密钥"
+msgstr ""
+
+msgid "地图显示配置"
+msgstr ""
+
+msgid "世界地图"
+msgstr ""
+
+msgid "国家级"
+msgstr ""
+
+msgid "城市级"
+msgstr ""
+
+msgid "街道级"
+msgstr ""
+
+msgid "推荐使用级别 4-6 以获得最佳的世界地图视图"
+msgstr ""
+
+msgid "纬度,经度 (例如: 35.0,105.0)"
+msgstr ""
+
+msgid "格式：纬度,经度。默认为中国地理中心"
+msgstr ""
+
+msgid "功能选项"
+msgstr ""
+
+msgid "在地图上方显示\"全部\"、\"已去\"、\"想去\"、\"计划\"筛选标签（数量为 0 的状态自动隐藏）"
+msgstr ""
+
+msgid "自适应缩放"
+msgstr ""
+
+msgid "开启后地图加载与筛选切换时自动调整视野包含全部标记点；关闭则固定使用默认中心与缩放"
+msgstr ""
+
+msgid "高亮已去国家"
+msgstr ""
+
+msgid "将\"已去\"标记涉及的国家在地图上整片填绿（需要标记已填写国别字段）"
+msgstr ""
+
+msgid "显示年度统计面板"
+msgstr ""
+
+msgid "显示状态统计面板"
+msgstr ""
+
+msgid "聚合与视野"
+msgstr ""
+
+msgid "聚合半径"
+msgstr ""
+
+msgid "像素。数值越大越容易合并成聚合气泡（默认 40）"
+msgstr ""
+
+msgid "聚合数字上限"
+msgstr ""
+
+msgid "聚合气泡显示的最大数字，超出仍显示该值（默认 9）"
+msgstr ""
+
+msgid "缺省筛选状态"
+msgstr ""
+
+msgid "最小缩放级别"
+msgstr ""
+
+msgid "最大缩放级别"
+msgstr ""
+
+msgid "缺省封面图"
+msgstr ""
+
+msgid "缺省缩略图地址"
+msgstr ""
+
+msgid "地点无封面且无关联文章特色图时，标记使用的兜底图片地址"
+msgstr ""
+
+msgid "使用说明"
+msgstr ""
+
+msgid "快速开始"
+msgstr ""
+
+msgid "配置API密钥"
+msgstr ""
+
+msgid "在上方输入您的高德地图API密钥并保存设置"
+msgstr ""
+
+msgid "添加地点标记"
+msgstr ""
+
+msgid "前往"
+msgstr ""
+
+msgid "页面添加您的旅行地点"
+msgstr ""
+
+msgid "显示地图"
+msgstr ""
+
+msgid "在页面或文章中使用短代码"
+msgstr ""
+
+msgid "地图宽度"
+msgstr ""
+
+msgid "默认: 100%"
+msgstr ""
+
+msgid "地图高度"
+msgstr ""
+
+msgid "默认: 550px"
+msgstr ""
+
+msgid "缩放级别 (1-18)"
+msgstr ""
+
+msgid "默认: 配置值"
+msgstr ""
+
+msgid "地图中心点坐标"
+msgstr ""
+
+msgid "显示的地点状态"
+msgstr ""
+
+msgid "默认: all"
+msgstr ""
+
+msgid "是否显示筛选标签"
+msgstr ""
+
+msgid "默认: true"
+msgstr ""
+
+msgid "筛选按钮集（逗号分隔）"
+msgstr ""
+
+msgid "默认: all,done,wish,plan"
+msgstr ""
+
+msgid "覆盖自适应缩放设置"
+msgstr ""
+
+msgid "默认: 设置值"
+msgstr ""
+
+msgid "地点状态说明"
+msgstr ""
+
+msgid "已去 (done)"
+msgstr ""
+
+msgid "已访问的地方，可关联旅行文章，点击显示文章详情"
+msgstr ""
+
+msgid "想去 (wish)"
+msgstr ""
+
+msgid "旅行愿望清单，可设置想去理由，点击显示简洁信息"
+msgstr ""
+
+msgid "计划 (plan)"
+msgstr ""
+
+msgid "已制定计划的旅行，可设置计划日期，点击显示计划详情"
+msgstr ""
+
+msgid "使用示例"
+msgstr ""
+
+msgid "基础地图"
+msgstr ""
+
+msgid "复制代码"
+msgstr ""
+
+msgid "显示所有地点的基础地图"
+msgstr ""
+
+msgid "大尺寸地图"
+msgstr ""
+
+msgid "高度700px的大尺寸地图，缩放级别3"
+msgstr ""
+
+msgid "只显示已去地点"
+msgstr ""
+
+msgid "只显示已去的地点，隐藏筛选标签"
+msgstr ""
+
+msgid "聚焦特定区域"
+msgstr ""
+
+msgid "聚焦北京地区（中国），适合展示特定区域的旅行足迹"
+msgstr ""
+
+msgid "只显示想去地点"
+msgstr ""
+
+msgid "仅显示想去的地点，展示旅行愿望清单"
+msgstr ""
+
+msgid "计划中的旅行"
+msgstr ""
+
+msgid "显示已制定计划的旅行地点，隐藏筛选标签"
+msgstr ""
+
+msgid "实用技巧"
+msgstr ""
+
+msgid "地点命名建议"
+msgstr ""
+
+msgid "使用清晰明确的地点名称，如\"北京天安门广场\"、\"法国巴黎埃菲尔铁塔\"，避免使用模糊的描述"
+msgstr ""
+
+msgid "文章关联功能"
+msgstr ""
+
+msgid "发布旅行文章时，系统会自动检测地名并建议关联到地点标记。您也可以手动关联多篇文章到同一地点"
+msgstr ""
+
+msgid "移动端适配"
+msgstr ""
+
+msgid "地图会自动适配移动设备，建议在移动端使用较小的高度值，如400px，以获得更好的显示效果"
+msgstr ""
+
+msgid "主题适配"
+msgstr ""
+
+msgid "地图会自动适配您的网站主题颜色模式（浅色/深色），无需手动配置"
+msgstr ""
+
+msgid "选择已有地点标记"
+msgstr ""
+
+msgid "搜索地点名称..."
+msgstr ""
+
+msgid "未知"
+msgstr ""
+
+msgid "未找到匹配的地点"
+msgstr ""
+
+msgid "还没有创建任何地点标记。您可以在下方创建新标记，或前往"
+msgstr ""
+
+msgid "坐标管理页面"
+msgstr ""
+
+msgid "创建标记。"
+msgstr ""
+
+msgid "或创建新地点标记"
+msgstr ""
+
+msgid "例如：巴黎埃菲尔铁塔"
+msgstr ""
+
+msgid "提示：地图上方可按名称搜索地点并自动回填坐标"
+msgstr ""
+
+msgid "按名称搜索地点"
+msgstr ""
+
+msgid "输入地点名，如：厦门"
+msgstr ""
+
+msgid "坐标位置"
+msgstr ""
+
+msgid "点击地图选择位置"
+msgstr ""
+
+msgid "手动输入坐标"
+msgstr ""
+
+msgid "描述这个地点..."
+msgstr ""
+
+msgid "提示：您可以使用在线地图工具（如高德地图、百度地图等）查找准确的经纬度坐标。"
+msgstr ""
+
+msgid "💡 使用提示"
+msgstr ""
+
+msgid "勾选已有标记点将该文章与地点关联"
+msgstr ""
+
+msgid "创建新标记点会自动关联到当前文章"
+msgstr ""
+
+msgid "文章发布后，访客可以在地图上点击查看相关文章"
+msgstr ""
+
+msgid "管理所有坐标请访问："
+msgstr ""
+
+msgid "放大"
+msgstr ""
+
+msgid "缩小"
+msgstr ""
+
+msgid "返回"
+msgstr ""
+
+msgid "全屏"
+msgstr ""
+
+msgid "这是一个交互式地图，显示了旅行目的地。下方列表与地图标记内容等价，可用键盘操作。"
+msgstr ""
+
+msgid "正在加载地点列表..."
+msgstr ""
+
+msgid "点击浮标可查看相关游记。"
+msgstr ""
+
+msgid "灰色浮标代表已去过但没有相关游记。"
+msgstr ""
+
+msgid "地图由 Travel Map 生成。"
+msgstr ""
+

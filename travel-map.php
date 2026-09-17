@@ -3,7 +3,7 @@
  * Plugin Name: WordPress Travel Map
  * Plugin URI: https://github.com/itandelin/Travel-Map
  * Description: 基于高德地图API的轻量级旅行博客地图插件，支持已去、想去、计划三种旅行状态标记。
- * Version: 1.0.1
+ * Version: 1.1.0
  * Author: Mr. T
  * Author URI: https://www.74110.net/recommendation/wordpress-travel-map/
  * Text Domain: travel-map
@@ -21,10 +21,12 @@ if (!defined('ABSPATH')) {
 }
 
 // 定义插件常量
-define('TRAVEL_MAP_VERSION', '1.0.1');
+define('TRAVEL_MAP_VERSION', '1.1.0');
 define('TRAVEL_MAP_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('TRAVEL_MAP_PLUGIN_PATH', plugin_dir_path(__FILE__));
 define('TRAVEL_MAP_TEXT_DOMAIN', 'travel-map');
+
+require_once TRAVEL_MAP_PLUGIN_PATH . 'includes/class-travel-map-migrator.php';
 
 /**
  * WordPress Travel Map 主类
@@ -70,9 +72,12 @@ class TravelMapPlugin {
         add_action('admin_menu', array($this, 'admin_menu'));
         add_action('wp_enqueue_scripts', array($this, 'maybe_enqueue_frontend_scripts'));
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_scripts'));
+        add_action('wp_head', array($this, 'print_safari_retina_fix'), 1);
         
         // 短代码注册（早期加载）
         add_shortcode('travel_map', array($this, 'render_map_shortcode'));
+        add_shortcode('travel_map_countries', array($this, 'render_countries_shortcode'));
+        add_shortcode('travel_map_markers', array($this, 'render_markers_shortcode'));
         
         // 在页面内容输出前检查是否有短代码
         add_filter('the_content', array($this, 'check_shortcode_and_enqueue_scripts'), 5);
@@ -95,6 +100,7 @@ class TravelMapPlugin {
         add_action('wp_ajax_travel_map_bulk_status', array($this, 'ajax_bulk_status'));
         add_action('wp_ajax_travel_map_export', array($this, 'ajax_export'));
         add_action('wp_ajax_travel_map_import', array($this, 'ajax_import'));
+        add_action('wp_ajax_travel_map_import_rows', array($this, 'ajax_import_rows'));
 
         add_action('rest_api_init', array($this, 'register_rest_routes'));
     }
@@ -105,9 +111,105 @@ class TravelMapPlugin {
     public function init() {
         // 加载文本域
         load_plugin_textdomain(TRAVEL_MAP_TEXT_DOMAIN, false, dirname(plugin_basename(__FILE__)) . '/languages');
-        
+
         // 检查依赖
         $this->check_dependencies();
+
+        // 版本化数据库迁移（幂等）
+        TravelMapMigrator::maybe_migrate();
+    }
+
+    /**
+     * 状态键兼容归一化：旧值 visited/want_to_go/planned → 新值 done/wish/plan
+     * 入参兼容保留一个大版本（1.1.x），1.2.0 移除
+     */
+    private function normalize_status($status) {
+        $map = array(
+            'visited'   => 'done',
+            'want_to_go' => 'wish',
+            'planned'   => 'plan',
+        );
+        $status = sanitize_text_field((string) $status);
+        return isset($map[$status]) ? $map[$status] : $status;
+    }
+
+    /**
+     * 校验状态值是否合法（含旧值归一化）
+     */
+    private function is_valid_status($status) {
+        return in_array($this->normalize_status($status), array('done', 'wish', 'plan'), true);
+    }
+
+    /**
+     * 国别字段：仅保留 ISO 代码，3 位 ISO3 归一为 ISO2，统一大写逗号分隔
+     *
+     * assets/flags/ 下的国旗资源按 ISO2 命名（如 cn.svg），所以入库统一存 ISO2。
+     * 无法映射的 3 位码直接丢弃：留着只会让前端去请求不存在的 svg 拿到 404。
+     */
+    public static function sanitize_country($raw) {
+        static $iso3_to_iso2 = array(
+            'AND' => 'AD', 'ARE' => 'AE', 'AFG' => 'AF', 'ATG' => 'AG', 'AIA' => 'AI', 'ALB' => 'AL', 'ARM' => 'AM', 'AGO' => 'AO',
+            'ATA' => 'AQ', 'ARG' => 'AR', 'ASM' => 'AS', 'AUT' => 'AT', 'AUS' => 'AU', 'ABW' => 'AW', 'ALA' => 'AX', 'AZE' => 'AZ',
+            'BIH' => 'BA', 'BRB' => 'BB', 'BGD' => 'BD', 'BEL' => 'BE', 'BFA' => 'BF', 'BGR' => 'BG', 'BHR' => 'BH', 'BDI' => 'BI',
+            'BEN' => 'BJ', 'BLM' => 'BL', 'BMU' => 'BM', 'BRN' => 'BN', 'BOL' => 'BO', 'BES' => 'BQ', 'BRA' => 'BR', 'BHS' => 'BS',
+            'BTN' => 'BT', 'BVT' => 'BV', 'BWA' => 'BW', 'BLR' => 'BY', 'BLZ' => 'BZ', 'CAN' => 'CA', 'CCK' => 'CC', 'COD' => 'CD',
+            'CAF' => 'CF', 'COG' => 'CG', 'CHE' => 'CH', 'CIV' => 'CI', 'COK' => 'CK', 'CHL' => 'CL', 'CMR' => 'CM', 'CHN' => 'CN',
+            'COL' => 'CO', 'CRI' => 'CR', 'CUB' => 'CU', 'CPV' => 'CV', 'CUW' => 'CW', 'CXR' => 'CX', 'CYP' => 'CY', 'CZE' => 'CZ',
+            'DEU' => 'DE', 'DJI' => 'DJ', 'DNK' => 'DK', 'DMA' => 'DM', 'DOM' => 'DO', 'DZA' => 'DZ', 'ECU' => 'EC', 'EST' => 'EE',
+            'EGY' => 'EG', 'ESH' => 'EH', 'ERI' => 'ER', 'ESP' => 'ES', 'ETH' => 'ET', 'FIN' => 'FI', 'FJI' => 'FJ', 'FLK' => 'FK',
+            'FSM' => 'FM', 'FRO' => 'FO', 'FRA' => 'FR', 'GAB' => 'GA', 'GBR' => 'GB', 'GRD' => 'GD', 'GEO' => 'GE', 'GUF' => 'GF',
+            'GGY' => 'GG', 'GHA' => 'GH', 'GIB' => 'GI', 'GRL' => 'GL', 'GMB' => 'GM', 'GIN' => 'GN', 'GLP' => 'GP', 'GNQ' => 'GQ',
+            'GRC' => 'GR', 'SGS' => 'GS', 'GTM' => 'GT', 'GUM' => 'GU', 'GNB' => 'GW', 'GUY' => 'GY', 'HKG' => 'HK', 'HMD' => 'HM',
+            'HND' => 'HN', 'HRV' => 'HR', 'HTI' => 'HT', 'HUN' => 'HU', 'IDN' => 'ID', 'IRL' => 'IE', 'ISR' => 'IL', 'IMN' => 'IM',
+            'IND' => 'IN', 'IOT' => 'IO', 'IRQ' => 'IQ', 'IRN' => 'IR', 'ISL' => 'IS', 'ITA' => 'IT', 'JEY' => 'JE', 'JAM' => 'JM',
+            'JOR' => 'JO', 'JPN' => 'JP', 'KEN' => 'KE', 'KGZ' => 'KG', 'KHM' => 'KH', 'KIR' => 'KI', 'COM' => 'KM', 'KNA' => 'KN',
+            'PRK' => 'KP', 'KOR' => 'KR', 'KWT' => 'KW', 'CYM' => 'KY', 'KAZ' => 'KZ', 'LAO' => 'LA', 'LBN' => 'LB', 'LCA' => 'LC',
+            'LIE' => 'LI', 'LKA' => 'LK', 'LBR' => 'LR', 'LSO' => 'LS', 'LTU' => 'LT', 'LUX' => 'LU', 'LVA' => 'LV', 'LBY' => 'LY',
+            'MAR' => 'MA', 'MCO' => 'MC', 'MDA' => 'MD', 'MNE' => 'ME', 'MAF' => 'MF', 'MDG' => 'MG', 'MHL' => 'MH', 'MKD' => 'MK',
+            'MLI' => 'ML', 'MMR' => 'MM', 'MNG' => 'MN', 'MAC' => 'MO', 'MNP' => 'MP', 'MTQ' => 'MQ', 'MRT' => 'MR', 'MSR' => 'MS',
+            'MLT' => 'MT', 'MUS' => 'MU', 'MDV' => 'MV', 'MWI' => 'MW', 'MEX' => 'MX', 'MYS' => 'MY', 'MOZ' => 'MZ', 'NAM' => 'NA',
+            'NCL' => 'NC', 'NER' => 'NE', 'NFK' => 'NF', 'NGA' => 'NG', 'NIC' => 'NI', 'NLD' => 'NL', 'NOR' => 'NO', 'NPL' => 'NP',
+            'NRU' => 'NR', 'NIU' => 'NU', 'NZL' => 'NZ', 'OMN' => 'OM', 'PAN' => 'PA', 'PER' => 'PE', 'PYF' => 'PF', 'PNG' => 'PG',
+            'PHL' => 'PH', 'PAK' => 'PK', 'POL' => 'PL', 'SPM' => 'PM', 'PCN' => 'PN', 'PRI' => 'PR', 'PSE' => 'PS', 'PRT' => 'PT',
+            'PLW' => 'PW', 'PRY' => 'PY', 'QAT' => 'QA', 'REU' => 'RE', 'ROU' => 'RO', 'SRB' => 'RS', 'RUS' => 'RU', 'RWA' => 'RW',
+            'SAU' => 'SA', 'SLB' => 'SB', 'SYC' => 'SC', 'SDN' => 'SD', 'SWE' => 'SE', 'SGP' => 'SG', 'SHN' => 'SH', 'SVN' => 'SI',
+            'SJM' => 'SJ', 'SVK' => 'SK', 'SLE' => 'SL', 'SMR' => 'SM', 'SEN' => 'SN', 'SOM' => 'SO', 'SUR' => 'SR', 'SSD' => 'SS',
+            'STP' => 'ST', 'SLV' => 'SV', 'SXM' => 'SX', 'SYR' => 'SY', 'SWZ' => 'SZ', 'TCA' => 'TC', 'TCD' => 'TD', 'ATF' => 'TF',
+            'TGO' => 'TG', 'THA' => 'TH', 'TJK' => 'TJ', 'TKL' => 'TK', 'TLS' => 'TL', 'TKM' => 'TM', 'TUN' => 'TN', 'TON' => 'TO',
+            'TUR' => 'TR', 'TTO' => 'TT', 'TUV' => 'TV', 'TWN' => 'TW', 'TZA' => 'TZ', 'UKR' => 'UA', 'UGA' => 'UG', 'UMI' => 'UM',
+            'USA' => 'US', 'URY' => 'UY', 'UZB' => 'UZ', 'VAT' => 'VA', 'VCT' => 'VC', 'VEN' => 'VE', 'VGB' => 'VG', 'VIR' => 'VI',
+            'VNM' => 'VN', 'VUT' => 'VU', 'WLF' => 'WF', 'WSM' => 'WS', 'YEM' => 'YE', 'MYT' => 'YT', 'ZAF' => 'ZA', 'ZMB' => 'ZM',
+            'ZWE' => 'ZW',
+        );
+
+        $tokens = preg_split('/[,，\s]+/u', strtoupper((string) $raw));
+        $valid = array();
+        foreach ($tokens as $token) {
+            $token = preg_replace('/[^A-Z]/', '', $token);
+            if (strlen($token) === 2) {
+                $valid[] = $token;
+            } elseif (strlen($token) === 3 && isset($iso3_to_iso2[$token])) {
+                $valid[] = $iso3_to_iso2[$token];
+            }
+        }
+        return implode(',', array_slice(array_unique($valid), 0, 5));
+    }
+
+    /**
+     * 年份字段：仅保留 4 位数字，去重倒序
+     */
+    public static function sanitize_years($raw) {
+        $tokens = preg_split('/[,，\s]+/u', (string) $raw);
+        $valid = array();
+        foreach ($tokens as $token) {
+            $token = trim($token);
+            if (preg_match('/^\d{4}$/', $token)) {
+                $valid[] = $token;
+            }
+        }
+        $valid = array_unique($valid);
+        rsort($valid);
+        return implode(',', $valid);
     }
 
     /**
@@ -119,6 +221,44 @@ class TravelMapPlugin {
             return (string) filemtime($path);
         }
         return TRAVEL_MAP_VERSION;
+    }
+
+    /**
+     * Safari(Mac/Retina) 下高德 2.0 会把 WebGL 渲染上限钳到 4096 再与
+     * 屏幕"物理像素"比较，Retina 屏(如 3008×1692 @2x → 6016)必然过不了检，
+     * SDK 静默回退 DOM 栅格渲染，深浅色自定义样式全部失效。
+     * 这里在 SDK 加载前复刻同一段判定，仅当"必然回退"时设置
+     * window.detectRetina = 0 关闭 Retina 倍乘，让 WebGL 判定通过。
+     * 代价仅是 Safari 上按 1x 渲染；其他浏览器不受任何影响。
+     */
+    private function get_safari_retina_fix_script() {
+        $script = "window.travelMapApplySafariRetinaFix=function(){if(window.travelMapSafariRetinaFixApplied)return;window.travelMapSafariRetinaFixApplied=!0;"
+            . "var r=navigator.userAgent.toLowerCase();"
+            . "if(-1===r.indexOf('macintosh'))return;"
+            . "if(!((-1!==r.indexOf('safari'))&&(-1!==r.indexOf('version/'))))return;"
+            . "var d=window.devicePixelRatio||1;if(!(1<d))return;"
+            . "var c=document.createElement('canvas');if(!c.getContext)return;"
+            . "var g=null;try{g=c.getContext('webgl')||c.getContext('experimental-webgl');}catch(e){}"
+            . "if(!g)return;"
+            . "var l=g.getParameter(g.MAX_RENDERBUFFER_SIZE),v=g.getParameter(g.MAX_VIEWPORT_DIMS);"
+            . "if(!v)return;"
+            . "l=Math.min(l,v[0],v[1],4096);"
+            . "var s=Math.max(screen.width,screen.height);"
+            . "if(d>1)s*=Math.min(2,d);"
+            . "if(l<s){window.detectRetina=0;}};"
+            . "window.travelMapApplySafariRetinaFix();";
+        return $script;
+    }
+
+    /**
+     * 前端 head 早期输出 Safari Retina 守卫，覆盖短代码动态注入 SDK 的场景
+     */
+    public function print_safari_retina_fix() {
+        // 仅当本页可能用到地图短代码时输出，避免污染普通页面
+        if (empty(get_option('travel_map_api_key', ''))) {
+            return;
+        }
+        echo '<script>' . $this->get_safari_retina_fix_script() . '</script>' . "\n";
     }
 
     /**
@@ -162,9 +302,14 @@ class TravelMapPlugin {
             return;
         }
         self::$markers_cache_cleared = true;
-        foreach (array('all', 'visited', 'want_to_go', 'planned') as $status) {
+        foreach (array('all', 'done', 'wish', 'plan') as $status) {
             delete_transient($this->get_markers_cache_key($status));
         }
+        // 旧状态键的遗留缓存一并清理
+        foreach (array('visited', 'want_to_go', 'planned') as $status) {
+            delete_transient($this->get_markers_cache_key($status));
+        }
+        delete_transient('travel_map_markers_geojson');
     }
     
     /**
@@ -208,6 +353,46 @@ class TravelMapPlugin {
             'type' => 'boolean',
             'default' => true
         ));
+        register_setting('travel_map_settings', 'travel_map_cluster_radius', array(
+            'type' => 'integer',
+            'default' => 40
+        ));
+        register_setting('travel_map_settings', 'travel_map_cluster_limit', array(
+            'type' => 'integer',
+            'default' => 9
+        ));
+        register_setting('travel_map_settings', 'travel_map_auto_zoom', array(
+            'type' => 'boolean',
+            'default' => true
+        ));
+        register_setting('travel_map_settings', 'travel_map_highlight_country', array(
+            'type' => 'boolean',
+            'default' => true
+        ));
+        register_setting('travel_map_settings', 'travel_map_show_yearly_stats', array(
+            'type' => 'boolean',
+            'default' => true
+        ));
+        register_setting('travel_map_settings', 'travel_map_show_type_stats', array(
+            'type' => 'boolean',
+            'default' => true
+        ));
+        register_setting('travel_map_settings', 'travel_map_default_filter_status', array(
+            'type' => 'string',
+            'default' => 'all'
+        ));
+        register_setting('travel_map_settings', 'travel_map_default_cover', array(
+            'type' => 'string',
+            'default' => ''
+        ));
+        register_setting('travel_map_settings', 'travel_map_min_zoom', array(
+            'type' => 'integer',
+            'default' => 1
+        ));
+        register_setting('travel_map_settings', 'travel_map_max_zoom', array(
+            'type' => 'integer',
+            'default' => 12
+        ));
     }
     
     /**
@@ -216,8 +401,8 @@ class TravelMapPlugin {
     public function admin_menu() {
         // 主菜单页面
         add_menu_page(
-            __('Travel Map', TRAVEL_MAP_TEXT_DOMAIN),
-            __('Travel Map', TRAVEL_MAP_TEXT_DOMAIN),
+            __('地图', TRAVEL_MAP_TEXT_DOMAIN),
+            __('地图', TRAVEL_MAP_TEXT_DOMAIN),
             'manage_options',
             'travel-map',
             array($this, 'admin_page_settings'),
@@ -261,7 +446,6 @@ class TravelMapPlugin {
         
         include TRAVEL_MAP_PLUGIN_PATH . 'templates/admin-settings.php';
     }
-    
     /**
      * 坐标管理页面
      */
@@ -292,16 +476,21 @@ class TravelMapPlugin {
         update_option('travel_map_default_center', sanitize_text_field($_POST['default_center']));
         update_option('travel_map_show_filter_tabs', isset($_POST['show_filter_tabs']));
         
-        // 颜色设置
-        if (isset($_POST['visited_color'])) {
-            update_option('travel_map_visited_color', sanitize_hex_color($_POST['visited_color']));
-        }
-        if (isset($_POST['want_to_go_color'])) {
-            update_option('travel_map_want_to_go_color', sanitize_hex_color($_POST['want_to_go_color']));
-        }
-        if (isset($_POST['planned_color'])) {
-            update_option('travel_map_planned_color', sanitize_hex_color($_POST['planned_color']));
-        }
+        // 地图行为设置
+        update_option('travel_map_cluster_radius', max(20, min(200, intval($_POST['cluster_radius'] ?? 40))));
+        update_option('travel_map_cluster_limit', max(1, min(999, intval($_POST['cluster_limit'] ?? 9))));
+        update_option('travel_map_auto_zoom', isset($_POST['auto_zoom']));
+        update_option('travel_map_highlight_country', isset($_POST['highlight_country']));
+        update_option('travel_map_show_yearly_stats', isset($_POST['show_yearly_stats']));
+        update_option('travel_map_show_type_stats', isset($_POST['show_type_stats']));
+        // 'all' 是合法取值：它表示 done/wish/plan 的并集（前端「全部」页签），
+        // 不是单个状态值，所以不能用 is_valid_status() 校验。
+        $filter_status = $this->normalize_status($_POST['default_filter_status'] ?? 'all');
+        $allowed_filter_status = array('all', 'done', 'wish', 'plan');
+        update_option('travel_map_default_filter_status', in_array($filter_status, $allowed_filter_status, true) ? $filter_status : 'all');
+        update_option('travel_map_default_cover', esc_url_raw($_POST['default_cover'] ?? ''));
+        update_option('travel_map_min_zoom', max(1, min(20, intval($_POST['min_zoom'] ?? 1))));
+        update_option('travel_map_max_zoom', max(3, min(20, intval($_POST['max_zoom'] ?? 12))));
         
         add_action('admin_notices', function() {
             echo '<div class="notice notice-success is-dismissible"><p>' . __('设置已保存', TRAVEL_MAP_TEXT_DOMAIN) . '</p></div>';
@@ -324,15 +513,18 @@ class TravelMapPlugin {
         $script_dependencies = array();
         
         if (!empty($api_key)) {
-            // 加载高德地图 API（底部加载，支持按需加载）
+            // 加载高德地图 API（底部加载，支持按需加载）；
+            // 一次带上聚合、行政区图层、搜索插件，避免后续二次注入
             wp_enqueue_script(
                 'amap-api',
-                "https://webapi.amap.com/maps?v=2.0&key={$api_key}",
+                "https://webapi.amap.com/maps?v=2.0&key={$api_key}&plugin=AMap.MarkerCluster,AMap.DistrictLayer,AMap.Autocomplete,AMap.PlaceSearch",
                 $script_dependencies,
                 TRAVEL_MAP_VERSION,
                 true
             );
             
+            wp_add_inline_script('amap-api', $this->get_safari_retina_fix_script(), 'before');
+
             if (!empty($security_key)) {
                 $security_script = "window._AMapSecurityConfig = { securityJsCode: '{$security_key}' };";
                 wp_add_inline_script('amap-api', $security_script, 'before');
@@ -368,27 +560,35 @@ class TravelMapPlugin {
             $this->get_asset_version('assets/css/travel-map.css')
         );
 
-        // 关键样式兜底，避免主题未加载 head 时样式缺失
-        $critical_css = '.travel-map-container{width:100%;height:var(--travel-map-height,500px);position:relative;overflow:hidden;background:#f5f5f5}.travel-map-wrapper,.travel-map{width:100%;height:100%;min-height:300px}.travel-map-loading{position:absolute;top:0;right:0;bottom:0;left:0;display:flex;align-items:center;justify-content:center;flex-direction:column;background:#f5f5f5;z-index:1000}.travel-map-controls{position:absolute;top:12px;right:12px;z-index:1000;display:flex;flex-direction:column;gap:8px}.travel-map-control-btn{width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid #d1d5db;border-radius:6px;padding:0}.travel-map-control-btn svg{width:20px;height:20px;display:block}.travel-map-accessibility{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}';
+        // 关键样式兜底，避免主题未加载 head 时样式缺失（与 travel-map.css / shortcode-init.js 三处同步）
+        $critical_css = '.travel-map-container{width:100%;height:var(--travel-map-height,550px);position:relative;overflow:hidden;background:#f5f5f5;border-radius:10px;margin-bottom:20px}.travel-map-wrapper,.travel-map{width:100%;height:100%;min-height:400px}@media (max-width:768px){.travel-map-container{height:auto;aspect-ratio:1/1.3;min-height:400px}}@media (max-width:480px){.travel-map-container{aspect-ratio:1/1.5;min-height:350px}.travel-map-wrapper,.travel-map{min-height:350px}}.travel-map-loading{position:absolute;top:0;right:0;bottom:0;left:0;display:flex;align-items:center;justify-content:center;flex-direction:column;background:#f5f5f5;z-index:1000}.travel-map-controls{position:absolute;top:10px;right:10px;z-index:1000;display:flex;flex-direction:column;gap:8px}.travel-map-control-btn{width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:#fff;border:0;border-radius:6px;padding:0;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.05)}.travel-map-control-btn svg{width:18px;height:18px;display:block;color:#333}.travel-map-embedded-filters{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:10;background:#fff;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.05);padding:7px 9px;display:flex;gap:8px;max-width:calc(100% - 20px);flex-wrap:wrap;justify-content:center}.travel-map-filter-tab{border:0;font-size:12px !important;background-color:#f9f9f9;color:#555;padding:5px 12px;border-radius:10px;cursor:pointer;line-height:1.5}.travel-map-filter-tab[data-status="all"]{background-color:rgba(220,38,38,.12);color:#b91c1c}.travel-map-filter-tab[data-status="done"]{background-color:rgba(192,88,12,.12);color:#c0580c}.travel-map-filter-tab[data-status="wish"]{background-color:rgba(202,138,4,.14);color:#a16207}.travel-map-filter-tab[data-status="plan"]{background-color:rgba(5,150,105,.12);color:#047857}.travel-map-filter-tab[data-status="all"].active{background-color:#dc2626;color:#fff}.travel-map-filter-tab[data-status="done"].active{background-color:#c0580c;color:#fff}.travel-map-filter-tab[data-status="wish"].active{background-color:#ca8a04;color:#fff}.travel-map-filter-tab[data-status="plan"].active{background-color:#059669;color:#fff}.travel-map-filter-tab.active{cursor:not-allowed}.travel-map-accessibility{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}';
         wp_add_inline_style('travel-map-frontend', $critical_css);
         
         // 本地化脚本
         wp_localize_script('travel-map-frontend', 'travelMapAjax', array(
             'ajaxurl' => admin_url('admin-ajax.php'),
             'restUrl' => esc_url_raw(rest_url('travel-map/v1/')),
+            'geojsonUrl' => esc_url_raw(rest_url('travel-map/v1/geojson')),
             'nonce' => wp_create_nonce('travel_map_nonce'),
             'apiKey' => $api_key,
-            'colors' => array(
-                'visited' => get_option('travel_map_visited_color', '#FF6B35'),
-                'want_to_go' => get_option('travel_map_want_to_go_color', '#3B82F6'),
-                'planned' => get_option('travel_map_planned_color', '#10B981')
+            'flagsBase' => TRAVEL_MAP_PLUGIN_URL . 'assets/flags/',
+            'settings' => array(
+                'clusterRadius' => (int) get_option('travel_map_cluster_radius', 40),
+                'clusterLimit' => (int) get_option('travel_map_cluster_limit', 9),
+                'autoZoom' => (bool) get_option('travel_map_auto_zoom', true),
+                'highlightCountry' => (bool) get_option('travel_map_highlight_country', true),
+                'showYearlyStats' => (bool) get_option('travel_map_show_yearly_stats', true),
+                'showTypeStats' => (bool) get_option('travel_map_show_type_stats', true),
+                'defaultFilterStatus' => get_option('travel_map_default_filter_status', 'all'),
+                'minZoom' => (int) get_option('travel_map_min_zoom', 1),
+                'maxZoom' => (int) get_option('travel_map_max_zoom', 12),
             ),
             'debug' => defined('WP_DEBUG') && WP_DEBUG
         ));
         
         $api_script_url = '';
         if (!empty($api_key)) {
-            $api_script_url = "https://webapi.amap.com/maps?v=2.0&key={$api_key}";
+            $api_script_url = "https://webapi.amap.com/maps?v=2.0&key={$api_key}&plugin=AMap.MarkerCluster,AMap.DistrictLayer,AMap.Autocomplete,AMap.PlaceSearch";
         }
 
         $style_url = add_query_arg(
@@ -437,12 +637,14 @@ class TravelMapPlugin {
         if (!empty($api_key)) {
             wp_enqueue_script(
                 'amap-api',
-                "https://webapi.amap.com/maps?v=2.0&key={$api_key}",
+                "https://webapi.amap.com/maps?v=2.0&key={$api_key}&plugin=AMap.Geocoder",
                 $dependencies,
                 TRAVEL_MAP_VERSION,
                 true
             );
             
+            wp_add_inline_script('amap-api', $this->get_safari_retina_fix_script(), 'before');
+
             if (!empty($security_key)) {
                 $security_script = "window._AMapSecurityConfig = { securityJsCode: '{$security_key}' };";
                 wp_add_inline_script('amap-api', $security_script, 'before');
@@ -490,6 +692,9 @@ class TravelMapPlugin {
         }
         
         if ($is_markers_page) {
+            // 封面图选择器依赖媒体库
+            wp_enqueue_media();
+
             wp_enqueue_style(
                 'travel-map-coordinates',
                 TRAVEL_MAP_PLUGIN_URL . 'assets/css/travel-map-coordinates.css',
@@ -512,6 +717,7 @@ class TravelMapPlugin {
             wp_localize_script('travel-map-coordinates', 'travelMapCoordinates', array(
                 'ajaxurl' => admin_url('admin-ajax.php'),
                 'nonce' => wp_create_nonce('travel_map_nonce'),
+                'flagsBase' => TRAVEL_MAP_PLUGIN_URL . 'assets/flags/',
                 'defaults' => array(
                     'lng' => 116.4074,
                     'lat' => 39.9042
@@ -529,6 +735,7 @@ class TravelMapPlugin {
                     'fetchFailed' => __('网络请求失败', TRAVEL_MAP_TEXT_DOMAIN),
                     'selectToDelete' => __('请选择要删除的标记点', TRAVEL_MAP_TEXT_DOMAIN),
                     'confirmBulkDelete' => __('确定要删除选中的 %d 个标记点吗？', TRAVEL_MAP_TEXT_DOMAIN),
+                    'confirmDelete' => __('确定要删除这个地点吗？此操作不可撤销。', TRAVEL_MAP_TEXT_DOMAIN),
                     'deleteSuccess' => __('删除成功', TRAVEL_MAP_TEXT_DOMAIN),
                     'deleteFailed' => __('删除失败：', TRAVEL_MAP_TEXT_DOMAIN),
                     'importSuccess' => __('导入成功', TRAVEL_MAP_TEXT_DOMAIN),
@@ -541,9 +748,9 @@ class TravelMapPlugin {
                     'countFormat' => __('%d 个地点', TRAVEL_MAP_TEXT_DOMAIN),
                     'edit' => __('编辑', TRAVEL_MAP_TEXT_DOMAIN),
                     'statusLabels' => array(
-                        'visited' => __('已去', TRAVEL_MAP_TEXT_DOMAIN),
-                        'want_to_go' => __('想去', TRAVEL_MAP_TEXT_DOMAIN),
-                        'planned' => __('计划', TRAVEL_MAP_TEXT_DOMAIN)
+                        'done' => __('已去', TRAVEL_MAP_TEXT_DOMAIN),
+                        'wish' => __('想去', TRAVEL_MAP_TEXT_DOMAIN),
+                        'plan' => __('计划', TRAVEL_MAP_TEXT_DOMAIN)
                     )
                 )
             ));
@@ -556,7 +763,7 @@ class TravelMapPlugin {
     public function render_map_shortcode($atts) {
         // 确保前端脚本已加载
         $this->enqueue_frontend_scripts();
-        
+
         // 兜底输出样式，避免主题未正确调用 wp_head 导致样式缺失
         if (!wp_style_is('travel-map-frontend', 'done')) {
             wp_print_styles('travel-map-frontend');
@@ -572,14 +779,17 @@ class TravelMapPlugin {
             $handles[] = 'travel-map-shortcode-init';
             wp_print_scripts($handles);
         }
-        
         $atts = shortcode_atts(array(
             'width' => '100%',
-            'height' => '500px',
+            'height' => '550px',
             'zoom' => get_option('travel_map_default_zoom', 4),
             'center' => get_option('travel_map_default_center', '35.0,105.0'),
             'filter_tabs' => get_option('travel_map_show_filter_tabs', true),
-            'status' => 'all'
+            // 留空而非 'all'：短代码默认值必须与「用户显式写 status="all"」可区分，
+            // 否则前端无法判断该不该让位给后台设置项 travel_map_default_filter_status。
+            'status' => '',
+            'filters' => 'all,done,wish,plan',
+            'auto_zoom' => '',
         ), $atts, 'travel_map');
         
         $api_key = get_option('travel_map_api_key', '');
@@ -594,8 +804,8 @@ class TravelMapPlugin {
             $schema_data = array(
                 '@context' => 'https://schema.org',
                 '@type' => 'Map',
-                'name' => get_the_title() . ' - ' . __('旅行地图', TRAVEL_MAP_TEXT_DOMAIN),
-                'description' => __('互动式旅行地图，展示已去、想去和计划的旅行目的地', TRAVEL_MAP_TEXT_DOMAIN),
+                'name' => get_the_title(),
+                'description' => __('互动式地图，展示已去、想去和计划的地点', TRAVEL_MAP_TEXT_DOMAIN),
                 'url' => get_permalink(),
                 'mapType' => 'InteractiveMap'
             );
@@ -610,6 +820,67 @@ class TravelMapPlugin {
         return ob_get_clean();
     }
     
+    /**
+     * [travel_map_countries] 去过国家国旗墙
+     *
+     * 按已去（done）标记的 country 字段分组，输出国旗 + ISO 码 + 地点数。
+     */
+    public function render_countries_shortcode() {
+        $markers = $this->get_markers_by_status('done');
+
+        $countries = array();
+        foreach ($markers as $marker) {
+            $raw = strtoupper((string) $marker->country);
+            if ($raw === '') {
+                continue;
+            }
+            foreach (array_filter(explode(',', $raw)) as $code) {
+                if (!isset($countries[$code])) {
+                    $countries[$code] = array('count' => 0);
+                }
+                $countries[$code]['count']++;
+            }
+        }
+        uasort($countries, function ($a, $b) {
+            return $b['count'] - $a['count'];
+        });
+
+        ob_start();
+        include TRAVEL_MAP_PLUGIN_PATH . 'templates/shortcode-countries.php';
+        return ob_get_clean();
+    }
+
+    /**
+     * [travel_map_markers] 标记归档列表
+     *
+     * 属性：status（done|wish|plan|all，默认 done）、type（分类过滤）
+     */
+    public function render_markers_shortcode($atts) {
+        $atts = shortcode_atts(array(
+            'status' => 'done',
+            'type' => '',
+        ), $atts, 'travel_map_markers');
+
+        $status = $this->normalize_status($atts['status']);
+        $type = sanitize_text_field($atts['type']);
+
+        $markers = $this->get_markers_by_status($status === 'all' ? 'all' : $status);
+
+        // 组装 posts（复用 geojson 的预加载逻辑）
+        $result = array();
+        foreach ($markers as $marker) {
+            if ($type !== '' && (string) $marker->type !== $type) {
+                continue;
+            }
+            $marker->posts = $this->get_marker_posts_payload($marker);
+            $result[] = $marker;
+        }
+
+        ob_start();
+        include TRAVEL_MAP_PLUGIN_PATH . 'templates/shortcode-markers.php';
+        return ob_get_clean();
+    }
+
     /**
      * 注册 REST 路由（公开只读）
      */
@@ -630,6 +901,12 @@ class TravelMapPlugin {
             )
         ));
 
+        register_rest_route('travel-map/v1', '/geojson', array(
+            'methods' => WP_REST_Server::READABLE,
+            'callback' => array($this, 'rest_get_geojson'),
+            'permission_callback' => '__return_true',
+        ));
+
         register_rest_route('travel-map/v1', '/location-posts', array(
             'methods' => WP_REST_Server::READABLE,
             'callback' => array($this, 'rest_get_location_posts'),
@@ -647,6 +924,128 @@ class TravelMapPlugin {
                 )
             )
         ));
+    }
+
+    /**
+     * REST: GeoJSON FeatureCollection（全量标记数据）
+     *
+     * properties: title / status(done|wish|plan) / country / type /
+     *             image[] / posts[] / year[]
+     */
+    public function rest_get_geojson() {
+        $cached = get_transient('travel_map_markers_geojson');
+        if ($cached !== false) {
+            return rest_ensure_response($cached);
+        }
+
+        $markers = $this->get_markers_by_status('all');
+        $features = array();
+
+        foreach ($markers as $marker) {
+            $posts = $this->get_marker_posts_payload($marker);
+
+            // 图片数组：手动封面优先，其后拼关联文章特色图（去重，上限 10）
+            $images = array();
+            if (!empty($marker->cover_image)) {
+                $images[] = $marker->cover_image;
+            }
+            foreach ($posts as $post) {
+                if (!empty($post['cover']) && !in_array($post['cover'], $images, true)) {
+                    $images[] = $post['cover'];
+                }
+                if (count($images) >= 10) {
+                    break;
+                }
+            }
+
+            // 年份数组：years 字段优先，回退 visit_date 年份
+            $years = array();
+            if (!empty($marker->years)) {
+                foreach (explode(',', $marker->years) as $y) {
+                    $y = trim($y);
+                    if (preg_match('/^\d{4}$/', $y)) {
+                        $years[] = $y;
+                    }
+                }
+            }
+            if (empty($years) && !empty($marker->visit_date)) {
+                $years[] = substr($marker->visit_date, 0, 4);
+            }
+
+            $features[] = array(
+                'type' => 'Feature',
+                'geometry' => array(
+                    'type' => 'Point',
+                    'coordinates' => array(
+                        (float) $marker->longitude,
+                        (float) $marker->latitude,
+                    ),
+                ),
+                'properties' => array(
+                    'title'   => (string) $marker->title,
+                    'status'  => $marker->status,
+                    'country' => isset($marker->country) ? (string) $marker->country : '',
+                    'type'    => isset($marker->type) ? (string) $marker->type : '',
+                    'image'   => $images,
+                    'posts'   => $posts,
+                    'year'    => $years,
+                    'plan_date'   => isset($marker->planned_date) ? (string) $marker->planned_date : '',
+                    'wish_reason' => isset($marker->wish_reason) ? (string) $marker->wish_reason : '',
+                ),
+            );
+        }
+
+        $geojson = array('type' => 'FeatureCollection', 'features' => $features);
+        set_transient('travel_map_markers_geojson', $geojson, 5 * MINUTE_IN_SECONDS);
+
+        return rest_ensure_response($geojson);
+    }
+
+    /**
+     * 组装某标记的关联游记 payload（一次 IN 查询，避免 N+1）
+     */
+    private function get_marker_posts_payload($marker) {
+        global $wpdb;
+        static $post_cache = array();
+
+        $post_ids = array();
+
+        if (!empty($marker->post_id)) {
+            $post_ids[] = (int) $marker->post_id;
+        }
+
+        $related = $wpdb->get_col($wpdb->prepare(
+            "SELECT post_id FROM {$wpdb->prefix}travel_map_post_markers WHERE marker_id = %d",
+            $marker->id
+        ));
+        foreach ($related as $pid) {
+            $pid = (int) $pid;
+            if (!in_array($pid, $post_ids, true)) {
+                $post_ids[] = $pid;
+            }
+        }
+
+        $posts = array();
+        foreach ($post_ids as $pid) {
+            if (!isset($post_cache[$pid])) {
+                $post = get_post($pid);
+                if ($post && $post->post_status === 'publish') {
+                    $post_cache[$pid] = array(
+                        'id' => (string) $pid,
+                        'permalink' => get_permalink($pid),
+                        'title' => $post->post_title,
+                        'cover' => (string) get_the_post_thumbnail_url($pid, 'medium'),
+                    );
+                } else {
+                    $post_cache[$pid] = null;
+                }
+            }
+            if ($post_cache[$pid] !== null) {
+                $posts[] = $post_cache[$pid];
+            }
+        }
+
+        return $posts;
     }
 
     /**
@@ -703,7 +1102,7 @@ class TravelMapPlugin {
 
         $this->verify_public_read_ajax_request();
         
-        $status = sanitize_text_field($_POST['status'] ?? 'all');
+        $status = $this->normalize_status($_POST['status'] ?? 'all');
         $search = sanitize_text_field($_POST['search'] ?? '');
         $markers = $this->get_markers_by_status($status, $search);
         
@@ -729,7 +1128,7 @@ class TravelMapPlugin {
             'title' => sanitize_text_field($_POST['title']),
             'latitude' => floatval($_POST['latitude']),
             'longitude' => floatval($_POST['longitude']),
-            'status' => sanitize_text_field($_POST['status']),
+            'status' => $this->normalize_status($_POST['status']),
             'description' => sanitize_textarea_field($_POST['description'] ?? ''),
             'post_id' => intval($_POST['post_id'] ?? 0) ?: null,
             'visit_date' => !empty($_POST['visit_date']) ? sanitize_text_field($_POST['visit_date']) : null,
@@ -737,7 +1136,10 @@ class TravelMapPlugin {
             'planned_date' => !empty($_POST['planned_date']) ? sanitize_text_field($_POST['planned_date']) : null,
             'wish_reason' => sanitize_textarea_field($_POST['wish_reason'] ?? ''),
             'priority_level' => intval($_POST['priority_level'] ?? 3),
-            'marker_color' => sanitize_hex_color($_POST['marker_color'] ?? '') ?: '#FF6B35'
+            'country' => self::sanitize_country($_POST['country'] ?? ''),
+            'years' => self::sanitize_years($_POST['years'] ?? ''),
+            'cover_image' => esc_url_raw($_POST['cover_image'] ?? ''),
+            'type' => sanitize_text_field($_POST['type'] ?? ''),
         );
         
         $marker_id = intval($_POST['marker_id'] ?? 0);
@@ -889,9 +1291,9 @@ class TravelMapPlugin {
         }
         
         $marker_ids = array_map('intval', $_POST['marker_ids']);
-        $new_status = sanitize_text_field($_POST['status']);
+        $new_status = $this->normalize_status($_POST['status']);
         
-        if (!in_array($new_status, array('visited', 'want_to_go', 'planned'))) {
+        if (!in_array($new_status, array('done', 'wish', 'plan'), true)) {
             wp_send_json_error(__('状态不正确', TRAVEL_MAP_TEXT_DOMAIN));
         }
         
@@ -956,9 +1358,9 @@ class TravelMapPlugin {
         
         $file = $_FILES['import_file'];
         $file_ext = pathinfo($file['name'], PATHINFO_EXTENSION);
-        
+
         $imported_count = 0;
-        
+
         if ($file_ext === 'csv') {
             $imported_count = $this->import_csv($file['tmp_name']);
         } elseif ($file_ext === 'json') {
@@ -966,10 +1368,43 @@ class TravelMapPlugin {
         } else {
             wp_send_json_error(__('不支持的文件格式', TRAVEL_MAP_TEXT_DOMAIN));
         }
-        
+
         wp_send_json_success(array(
             'message' => sprintf(__('已导入 %d 个标记点', TRAVEL_MAP_TEXT_DOMAIN), $imported_count),
             'count' => $imported_count
+        ));
+    }
+
+    /**
+     * AJAX: 校正坐标后批量导入
+     *
+     * 前端开启 WGS-84 纠偏时，把经 AMap.convertFrom 转换好的行数据
+     * 直接按行导入（import_data = JSON 数组，每项一条标记），
+     * 不再走文件解析路径。
+     */
+    public function ajax_import_rows() {
+        check_ajax_referer('travel_map_nonce', 'nonce');
+
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(__('权限不足', TRAVEL_MAP_TEXT_DOMAIN));
+        }
+
+        $rows = isset($_POST['import_data']) ? json_decode(wp_unslash($_POST['import_data']), true) : null;
+        if (!is_array($rows) || empty($rows)) {
+            wp_send_json_error(__('没有可导入的数据', TRAVEL_MAP_TEXT_DOMAIN));
+        }
+
+        $imported = 0;
+        foreach ($rows as $row) {
+            if ($this->import_row($row)) {
+                $imported++;
+            }
+        }
+        $this->clear_markers_cache();
+
+        wp_send_json_success(array(
+            'message' => sprintf(__('已导入 %d 个标记点', TRAVEL_MAP_TEXT_DOMAIN), $imported),
+            'count' => $imported
         ));
     }
     
@@ -998,7 +1433,7 @@ class TravelMapPlugin {
         if (version_compare(PHP_VERSION, '7.4', '<')) {
             add_action('admin_notices', function() {
                 echo '<div class="notice notice-error"><p>' . 
-                     sprintf(__('Travel Map 需要 PHP 7.4 或更高版本，当前版本：%s', TRAVEL_MAP_TEXT_DOMAIN), PHP_VERSION) . 
+                     sprintf(__('本插件需要 PHP 7.4 或更高版本，当前版本：%s', TRAVEL_MAP_TEXT_DOMAIN), PHP_VERSION) . 
                      '</p></div>';
             });
         }
@@ -1033,6 +1468,8 @@ class TravelMapPlugin {
                 false  // 在头部加载
             );
             
+            wp_add_inline_script('amap-api-meta-box', $this->get_safari_retina_fix_script(), 'before');
+
             if (!empty($security_key)) {
                 $security_script = "window._AMapSecurityConfig = { securityJsCode: '{$security_key}' };";
                 wp_add_inline_script('amap-api-meta-box', $security_script, 'before');
@@ -1096,8 +1533,9 @@ class TravelMapPlugin {
                 'title' => sanitize_text_field($_POST['new_marker_title']),
                 'latitude' => floatval($_POST['new_marker_latitude']),
                 'longitude' => floatval($_POST['new_marker_longitude']),
-                'status' => sanitize_text_field($_POST['new_marker_status']) ?: 'visited',
-                'description' => sanitize_textarea_field($_POST['new_marker_description']),
+                'status' => $this->normalize_status($_POST['new_marker_status']) ?: 'done',
+                'description' => sanitize_textarea_field($_POST['new_marker_description'] ?? ''),
+                'country' => self::sanitize_country($_POST['new_marker_country'] ?? ''),
                 'post_id' => $post_id
             );
             
@@ -1127,9 +1565,18 @@ class TravelMapPlugin {
     public static function uninstall() {
         // 删除选项
         delete_option('travel_map_api_key');
+        delete_option('travel_map_security_key');
         delete_option('travel_map_default_zoom');
         delete_option('travel_map_default_center');
         delete_option('travel_map_show_filter_tabs');
+        delete_option('travel_map_db_version');
+        foreach (array_keys(TravelMapMigrator::default_settings()) as $key) {
+            delete_option($key);
+        }
+        // 兼容清理：1.0.x 的三色选项
+        delete_option('travel_map_visited_color');
+        delete_option('travel_map_want_to_go_color');
+        delete_option('travel_map_planned_color');
         
         // 删除数据库表
         global $wpdb;
@@ -1153,15 +1600,19 @@ class TravelMapPlugin {
             title varchar(255) NOT NULL,
             latitude decimal(10,8) NOT NULL,
             longitude decimal(11,8) NOT NULL,
-            status enum('visited', 'want_to_go', 'planned') DEFAULT 'visited',
+            status enum('done','wish','plan') DEFAULT 'done',
             visit_date date NULL,
             visit_count int DEFAULT 1,
             description text NULL,
-            marker_color varchar(7) DEFAULT '#FF6B35',
+            marker_color varchar(7) DEFAULT NULL,
             planned_date date NULL,
             wish_reason text NULL,
             priority_level tinyint DEFAULT 3,
             is_featured boolean DEFAULT FALSE,
+            country varchar(20) NULL,
+            years text NULL,
+            cover_image text NULL,
+            type varchar(30) NULL DEFAULT '',
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
@@ -1195,9 +1646,10 @@ class TravelMapPlugin {
         add_option('travel_map_default_zoom', 4);
         add_option('travel_map_default_center', '35.0,105.0');
         add_option('travel_map_show_filter_tabs', true);
-        add_option('travel_map_visited_color', '#FF6B35');
-        add_option('travel_map_want_to_go_color', '#3B82F6');
-        add_option('travel_map_planned_color', '#10B981');
+        foreach (TravelMapMigrator::default_settings() as $key => $value) {
+            add_option($key, $value);
+        }
+        update_option('travel_map_db_version', TravelMapMigrator::DB_VERSION);
     }
     
     /**
@@ -1335,7 +1787,7 @@ class TravelMapPlugin {
         
         // 为每个标记点添加最新文章的特色图片
         foreach ($markers as $marker) {
-            if ($marker->status === 'visited') {
+            if ($marker->status === 'done') {
                 $featured_image = $this->get_marker_featured_image($marker);
                 $marker->featured_image = $featured_image;
             }
@@ -1505,19 +1957,17 @@ class TravelMapPlugin {
      */
     private function export_csv($markers) {
         $filename = 'travel-map-export-' . date('Y-m-d') . '.csv';
-        
-        header('Content-Type: text/csv; charset=utf-8');
-        header('Content-Disposition: attachment; filename=' . $filename);
-        
-        $output = fopen('php://output', 'w');
-        
+
+        // 先写入内存流再一次性输出，避免直接 fopen 输出流
+        $output = fopen('php://temp', 'r+');
+
         // CSV 头部
         fputcsv($output, array(
             'ID', 'Title', 'Latitude', 'Longitude', 'Status', 'Description',
             'Visit Date', 'Visit Count', 'Planned Date', 'Wish Reason',
-            'Priority Level', 'Created At'
+            'Priority Level', 'Country', 'Years', 'Cover Image', 'Type', 'Created At'
         ));
-        
+
         // 数据行
         foreach ($markers as $marker) {
             fputcsv($output, array(
@@ -1532,11 +1982,21 @@ class TravelMapPlugin {
                 $marker->planned_date,
                 $marker->wish_reason,
                 $marker->priority_level,
+                isset($marker->country) ? $marker->country : '',
+                isset($marker->years) ? $marker->years : '',
+                isset($marker->cover_image) ? $marker->cover_image : '',
+                isset($marker->type) ? $marker->type : '',
                 $marker->created_at
             ));
         }
-        
+
+        rewind($output);
+        $csv = stream_get_contents($output);
         fclose($output);
+
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename=' . $filename);
+        echo $csv;
         exit;
     }
     
@@ -1570,8 +2030,6 @@ class TravelMapPlugin {
         fgetcsv($handle);
         
         $imported_count = 0;
-        global $wpdb;
-        $table_markers = $wpdb->prefix . 'travel_map_markers';
         
         while (($data = fgetcsv($handle)) !== false) {
             if (count($data) >= 4) {
@@ -1579,16 +2037,20 @@ class TravelMapPlugin {
                     'title' => sanitize_text_field($data[1]),
                     'latitude' => floatval($data[2]),
                     'longitude' => floatval($data[3]),
-                    'status' => in_array($data[4], array('visited', 'want_to_go', 'planned')) ? $data[4] : 'visited',
+                    'status' => $this->is_valid_status($data[4] ?? '') ? $this->normalize_status($data[4]) : 'done',
                     'description' => sanitize_textarea_field($data[5] ?? ''),
                     'visit_date' => !empty($data[6]) ? $data[6] : null,
                     'visit_count' => intval($data[7] ?? 1),
                     'planned_date' => !empty($data[8]) ? $data[8] : null,
                     'wish_reason' => sanitize_textarea_field($data[9] ?? ''),
-                    'priority_level' => intval($data[10] ?? 3)
+                    'priority_level' => intval($data[10] ?? 3),
+                    'country' => self::sanitize_country($data[11] ?? ''),
+                    'years' => self::sanitize_years($data[12] ?? ''),
+                    'cover_image' => esc_url_raw($data[13] ?? ''),
+                    'type' => sanitize_text_field($data[14] ?? ''),
                 );
                 
-                if ($wpdb->insert($table_markers, $marker_data)) {
+                if ($this->import_row($marker_data)) {
                     $imported_count++;
                 }
             }
@@ -1597,6 +2059,20 @@ class TravelMapPlugin {
         fclose($handle);
         $this->clear_markers_cache();
         return $imported_count;
+    }
+
+    /**
+     * 写入单条标记（导入共用路径，字段已在上游 sanitize）
+     */
+    private function import_row($marker_data) {
+        global $wpdb;
+        $required = array('title', 'latitude', 'longitude', 'status');
+        foreach ($required as $key) {
+            if (!isset($marker_data[$key]) || $marker_data[$key] === '' || $marker_data[$key] === null) {
+                return false;
+            }
+        }
+        return (bool) $wpdb->insert($wpdb->prefix . 'travel_map_markers', $marker_data);
     }
     
     /**
@@ -1615,14 +2091,12 @@ class TravelMapPlugin {
         }
         
         $imported_count = 0;
-        global $wpdb;
-        $table_markers = $wpdb->prefix . 'travel_map_markers';
         
         foreach ($data as $item) {
             if (isset($item['title'], $item['latitude'], $item['longitude'])) {
-                $status = isset($item['status']) ? sanitize_text_field($item['status']) : 'visited';
-                if (!in_array($status, array('visited', 'want_to_go', 'planned'), true)) {
-                    $status = 'visited';
+                $status = isset($item['status']) ? $this->normalize_status($item['status']) : 'done';
+                if (!in_array($status, array('done', 'wish', 'plan'), true)) {
+                    $status = 'done';
                 }
                 $marker_data = array(
                     'title' => sanitize_text_field($item['title']),
@@ -1634,10 +2108,14 @@ class TravelMapPlugin {
                     'visit_count' => intval($item['visit_count'] ?? 1),
                     'planned_date' => !empty($item['planned_date']) ? $item['planned_date'] : null,
                     'wish_reason' => sanitize_textarea_field($item['wish_reason'] ?? ''),
-                    'priority_level' => intval($item['priority_level'] ?? 3)
+                    'priority_level' => intval($item['priority_level'] ?? 3),
+                    'country' => self::sanitize_country($item['country'] ?? ''),
+                    'years' => self::sanitize_years($item['years'] ?? ''),
+                    'cover_image' => esc_url_raw($item['cover_image'] ?? ''),
+                    'type' => sanitize_text_field($item['type'] ?? ''),
                 );
                 
-                if ($wpdb->insert($table_markers, $marker_data)) {
+                if ($this->import_row($marker_data)) {
                     $imported_count++;
                 }
             }
@@ -1681,14 +2159,18 @@ class TravelMapPlugin {
             'title' => sanitize_text_field($post_data['title']),
             'latitude' => floatval($post_data['latitude']),
             'longitude' => floatval($post_data['longitude']),
-            'status' => sanitize_text_field($post_data['status']),
+            'status' => $this->normalize_status($post_data['status']),
             'description' => sanitize_textarea_field($post_data['description']),
             'post_id' => intval($post_data['post_id']) ?: null,
             'visit_date' => !empty($post_data['visit_date']) ? $post_data['visit_date'] : null,
             'visit_count' => intval($post_data['visit_count']) ?: 1,
             'planned_date' => !empty($post_data['planned_date']) ? $post_data['planned_date'] : null,
             'wish_reason' => sanitize_textarea_field($post_data['wish_reason']),
-            'priority_level' => intval($post_data['priority_level']) ?: 3
+            'priority_level' => intval($post_data['priority_level']) ?: 3,
+            'country' => self::sanitize_country($post_data['country'] ?? ''),
+            'years' => self::sanitize_years($post_data['years'] ?? ''),
+            'cover_image' => esc_url_raw($post_data['cover_image'] ?? ''),
+            'type' => sanitize_text_field($post_data['type'] ?? ''),
         );
         
         if ($this->save_marker($marker_data)) {
@@ -1719,14 +2201,18 @@ class TravelMapPlugin {
             'title' => sanitize_text_field($post_data['title']),
             'latitude' => floatval($post_data['latitude']),
             'longitude' => floatval($post_data['longitude']),
-            'status' => sanitize_text_field($post_data['status']),
+            'status' => $this->normalize_status($post_data['status']),
             'description' => sanitize_textarea_field($post_data['description']),
             'post_id' => intval($post_data['post_id']) ?: null,
             'visit_date' => !empty($post_data['visit_date']) ? $post_data['visit_date'] : null,
             'visit_count' => intval($post_data['visit_count']) ?: 1,
             'planned_date' => !empty($post_data['planned_date']) ? $post_data['planned_date'] : null,
             'wish_reason' => sanitize_textarea_field($post_data['wish_reason']),
-            'priority_level' => intval($post_data['priority_level']) ?: 3
+            'priority_level' => intval($post_data['priority_level']) ?: 3,
+            'country' => self::sanitize_country($post_data['country'] ?? ''),
+            'years' => self::sanitize_years($post_data['years'] ?? ''),
+            'cover_image' => esc_url_raw($post_data['cover_image'] ?? ''),
+            'type' => sanitize_text_field($post_data['type'] ?? ''),
         );
         
         if ($this->update_marker($marker_id, $marker_data)) {

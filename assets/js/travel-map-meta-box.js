@@ -23,6 +23,7 @@
         let isManualInputMode = false;
 
         initMetaBoxMapPicker();
+        initPlaceSearch();
         updateStatistics();
 
         $searchInput.on('input', function() {
@@ -244,6 +245,105 @@
         function updateMetaBoxCoordinates(lng, lat) {
             $('#meta-longitude').val(lng.toFixed(6));
             $('#meta-latitude').val(lat.toFixed(6));
+        }
+
+        /**
+         * 按名称搜索地点（高德 Autocomplete + PlaceSearch）
+         * 选中后回填：名称、经纬度、地图定位；国别需人工确认（国内点自动填 CN）
+         */
+        function initPlaceSearch() {
+            const $input = $('#travel-map-place-search');
+            const $results = $('#travel-map-place-search-results');
+            if (!$input.length || typeof window.AMap === 'undefined') {
+                return;
+            }
+
+            let placeSearch = null;
+            let autocomplete = null;
+            let candidates = [];
+
+            const hideResults = () => $results.hide().empty();
+            const closeOnOutside = (e) => {
+                if (!$(e.target).closest('#travel-map-place-search-row').length) {
+                    hideResults();
+                }
+            };
+            $(document).on('click', closeOnOutside);
+
+            $input.on('input', function() {
+                const keyword = $(this).val().trim();
+                if (!keyword || keyword.length < 2) {
+                    hideResults();
+                    return;
+                }
+                AMap.plugin(['AMap.Autocomplete', 'AMap.PlaceSearch'], function() {
+                    if (!autocomplete) {
+                        autocomplete = new AMap.Autocomplete({ city: '' });
+                    }
+                    autocomplete.search(keyword, function(status, result) {
+                        if (status !== 'complete' || !result.tips) {
+                            hideResults();
+                            return;
+                        }
+                        candidates = result.tips.filter(tip => tip.location);
+                        if (!candidates.length) {
+                            $results.html('<div class="travel-map-place-item empty">未找到匹配地点</div>').show();
+                            return;
+                        }
+                        $results.html(candidates.slice(0, 6).map((tip, i) =>
+                            '<div class="travel-map-place-item" data-idx="' + i + '">' +
+                                '<span class="travel-map-place-name">' + escapeHtmlText(tip.name) + '</span>' +
+                                '<span class="travel-map-place-district">' + escapeHtmlText(tip.district || '') + '</span>' +
+                            '</div>'
+                        ).join('')).show();
+                    });
+                });
+            });
+
+            $results.on('click', '.travel-map-place-item', function() {
+                const tip = candidates[parseInt($(this).data('idx'), 10)];
+                if (!tip || !tip.location) {
+                    return;
+                }
+                const lng = tip.location.lng;
+                const lat = tip.location.lat;
+
+                // 回填名称与坐标
+                $('input[name="new_marker_title"]').val(tip.name);
+                $('#meta-longitude').val(lng.toFixed(6));
+                $('#meta-latitude').val(lat.toFixed(6));
+
+                // 地图定位
+                if (metaBoxMap && metaBoxMapMarker) {
+                    metaBoxMapMarker.setPosition([lng, lat]);
+                    metaBoxMap.setCenter([lng, lat]);
+                    metaBoxMap.setZoom(11);
+                }
+
+                // 国内点（高德坐标系覆盖范围）默认 CN，海外留空人工填写
+                const $country = $('input[name="new_marker_country"]');
+                if (!$country.val() && lng > 73 && lng < 136 && lat > 18 && lat < 54) {
+                    $country.val('CN');
+                }
+
+                hideResults();
+                $input.val(tip.name);
+            });
+
+            $input.on('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    hideResults();
+                }
+            });
+        }
+
+        function escapeHtmlText(value) {
+            const map = {
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            };
+            return String(value == null ? '' : value).replace(/[&<>"']/g, function(c) {
+                return map[c] || c;
+            });
         }
 
         function showMapError(mapContainer, message) {

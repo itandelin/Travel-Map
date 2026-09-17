@@ -366,3 +366,30 @@
     font-style: italic;
     margin-top: 5px;
 }
+
+/**
+ * 响应式：原文件无任何媒体查询，`120px 1fr 1fr` 等固定网格在窄屏
+ * （WordPress 后台 782px 移动断点、或经典编辑器窄侧栏）会横向溢出。
+ * 782px 对齐 WP 自身的 auto-fold/移动断点；480px 再收一档给小屏手机。
+ */
+@media (max-width: 782px) {
+    .travel-map-form-row,
+    .travel-map-coords-row {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+
+    .travel-map-coords-display {
+        grid-template-columns: 1fr;
+    }
+
+    .travel-map-form-label {
+        margin-bottom: -4px;
+    }
+}
+
+@media (max-width: 480px) {
+    .travel-map-markers-grid {
+        grid-template-columns: 1fr;
+    }
+}

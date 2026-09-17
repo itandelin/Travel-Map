@@ -1,10 +1,19 @@
 /**
- * Travel Map Frontend JavaScript - 原生JavaScript版本
- * 前端地图交互脚本（无jQuery依赖）
+ * Travel Map Frontend JavaScript
+ *
+ * - 标记六形态 + hover 照片揭示
+ * - InfoWindow 弹窗
+ * - MarkerCluster 聚合 + 点击逐级展开
+ * - auto_zoom / 返回按钮 / fitToMarkers
+ * - 国家高亮 DistrictLayer.World
+ * - 南海十段线
+ * - 筛选栏智能显隐 + 行为链
+ * - 年度/状态统计面板
  */
 
 (function() {
     'use strict';
+
     const escapeHtml = (value) => {
         return String(value ?? '').replace(/[&<>"'`]/g, (char) => {
             const map = {
@@ -31,66 +40,132 @@
         return '';
     };
 
-    const safeNumberText = (value, fallback = '1') => {
-        const num = Number(value);
-        return Number.isFinite(num) ? String(num) : fallback;
+    // ISO2 → SOC(ISO3) 映射（DistrictLayer.World 的 fill 回调入参为 SOC）
+    const ISO2_TO_ISO3 = {
+        ad:'AND',ae:'ARE',af:'AFG',ag:'ATG',ai:'AIA',al:'ALB',am:'ARM',ao:'AGO',aq:'ATA',ar:'ARG',as:'ASM',at:'AUT',au:'AUS',aw:'ABW',ax:'ALA',az:'AZE',
+        ba:'BIH',bb:'BRB',bd:'BGD',be:'BEL',bf:'BFA',bg:'BGR',bh:'BHR',bi:'BDI',bj:'BEN',bl:'BLM',bm:'BMU',bn:'BRN',bo:'BOL',bq:'BES',br:'BRA',bs:'BHS',bt:'BTN',bv:'BVT',bw:'BWA',by:'BLR',bz:'BLZ',
+        ca:'CAN',cc:'CCK',cd:'COD',cf:'CAF',cg:'COG',ch:'CHE',ci:'CIV',ck:'COK',cl:'CHL',cm:'CMR',cn:'CHN',co:'COL',cr:'CRI',cu:'CUB',cv:'CPV',cw:'CUW',cx:'CXR',cy:'CYP',cz:'CZE',
+        de:'DEU',dj:'DJI',dk:'DNK',dm:'DMA',do:'DOM',dz:'DZA',ec:'ECU',ee:'EST',eg:'EGY',eh:'ESH',er:'ERI',es:'ESP',et:'ETH',
+        fi:'FIN',fj:'FJI',fk:'FLK',fm:'FSM',fo:'FRO',fr:'FRA',ga:'GAB',gb:'GBR',gd:'GRD',ge:'GEO',gf:'GUF',gg:'GGY',gh:'GHA',gi:'GIB',gl:'GRL',gm:'GMB',gn:'GIN',gp:'GLP',gq:'GNQ',gr:'GRC',gs:'SGS',gt:'GTM',gu:'GUM',gw:'GNB',gy:'GUY',
+        hk:'HKG',hm:'HMD',hn:'HND',hr:'HRV',ht:'HTI',hu:'HUN',id:'IDN',ie:'IRL',il:'ISR',im:'IMN',in:'IND',io:'IOT',iq:'IRQ',ir:'IRN',is:'ISL',it:'ITA',
+        je:'JEY',jm:'JAM',jo:'JOR',jp:'JPN',ke:'KEN',kg:'KGZ',kh:'KHM',ki:'KIR',km:'COM',kn:'KNA',kp:'PRK',kr:'KOR',kw:'KWT',ky:'CYM',kz:'KAZ',
+        la:'LAO',lb:'LBN',lc:'LCA',li:'LIE',lk:'LKA',lr:'LBR',ls:'LSO',lt:'LTU',lu:'LUX',lv:'LVA',ly:'LBY',
+        ma:'MAR',mc:'MCO',md:'MDA',me:'MNE',mf:'MAF',mg:'MDG',mh:'MHL',mk:'MKD',ml:'MLI',mm:'MMR',mn:'MNG',mo:'MAC',mp:'MNP',mq:'MTQ',mr:'MRT',ms:'MSR',mt:'MLT',mu:'MUS',mv:'MDV',mw:'MWI',mx:'MEX',my:'MYS',mz:'MOZ',
+        na:'NAM',nc:'NCL',ne:'NER',nf:'NFK',ng:'NGA',ni:'NIC',nl:'NLD',no:'NOR',np:'NPL',nr:'NRU',nu:'NIU',nz:'NZL',
+        om:'OMN',pa:'PAN',pe:'PER',pf:'PYF',pg:'PNG',ph:'PHL',pk:'PAK',pl:'POL',pm:'SPM',pn:'PCN',pr:'PRI',ps:'PSE',pt:'PRT',pw:'PLW',py:'PRY',
+        qa:'QAT',re:'REU',ro:'ROU',rs:'SRB',ru:'RUS',rw:'RWA',sa:'SAU',sb:'SLB',sc:'SYC',sd:'SDN',se:'SWE',sg:'SGP',sh:'SHN',si:'SVN',sj:'SJM',sk:'SVK',sl:'SLE',sm:'SMR',sn:'SEN',so:'SOM',sr:'SUR',ss:'SSD',st:'STP',sv:'SLV',sx:'SXM',sy:'SYR',sz:'SWZ',
+        tc:'TCA',td:'TCD',tf:'ATF',tg:'TGO',th:'THA',tj:'TJK',tk:'TKL',tl:'TLS',tm:'TKM',tn:'TUN',to:'TON',tr:'TUR',tt:'TTO',tv:'TUV',tw:'TWN',tz:'TZA',
+        ua:'UKR',ug:'UGA',um:'UMI',us:'USA',uy:'URY',uz:'UZB',va:'VAT',vc:'VCT',ve:'VEN',vg:'VGB',vi:'VIR',vn:'VNM',vu:'VUT',wf:'WLF',ws:'WSM',ye:'YEM',yt:'MYT',za:'ZAF',zm:'ZMB',zw:'ZWE'
     };
+
+    // 南海十段线（MultiLineString，坐标来自分析文档 §2.9）
+    const TEN_DASH_LINES = [
+        [[109.51763678906526,16.360467782665847],[109.72339159230361,16.05587198177934],[109.8780414893003,15.766823920473868],[109.96506402665503,15.526031073258686],[109.98526818797363,15.335615618596712]],
+        [[110.48331454715199,12.431407837351566],[110.48240767589328,12.085792287259398],[110.45136562643113,11.863835000833953],[110.25652028695671,11.393616070326182]],
+        [[108.3388949586325,7.26656318024262],[108.30727608084116,6.727803403200289],[108.35631901989032,6.112648053307836]],
+        [[111.94112275674237,3.553559321848772],[112.40151782268552,3.646409974664658],[112.92104341055976,3.845112027649191]],
+        [[115.69079809651517,7.29016984601141],[116.4095482213759,8.137962397303875]],
+        [[118.63503455703679,11.080904139262175],[118.85587024190139,11.457907321145406],[119.10128629647166,12.062751715859875],[119.12181771101825,12.135585760471585]],
+        [[119.60808384544805,18.143451232827125],[119.91075760817219,18.77194701315816],[120.11918953031866,19.117669954512905]],
+        [[121.40591812413318,20.8001943859176],[122.12216430894797,21.716094829922323]],
+        [[122.80328441666389,23.665545127578547],[123.00481138309124,24.74934291726869]],
+        [[119.16836075308866,15.107448879733406],[119.16981236678279,15.755038547478351],[119.17823197590195,16.265658015720753]]
+    ];
+
+    // 状态标签（done/wish/plan，旧键入参已在服务端归一）
+    const STATUS_LABELS = { all: '全部', done: '已去', wish: '想去', plan: '计划' };
+    const VALID_FILTERS = ['all', 'done', 'wish', 'plan'];
+
+    // 标记 hover 会放大到 64px（见 CSS .marker:not(.no-hover):hover），
+    // 半径 32px 加 10px 间隙，卡片边缘至少要离标记中心 42px 才不会压住放大后的图片。
+    const POPUP_MARKER_GAP = 42;
+    // 气泡与地图/视窗边界的安全距离
+    const POPUP_VIEWPORT_MARGIN = 12;
+    // 箭头贴边下限：箭头半宽 8px + 卡片圆角 10px
+    const POPUP_ARROW_INSET = 18;
+
+    const BREAKPOINT_MOBILE = 768;
+    const MQ_MOBILE = window.matchMedia
+        ? window.matchMedia('(max-width: ' + BREAKPOINT_MOBILE + 'px)')
+        : null;
+    const isMobileViewport = () => MQ_MOBILE ? MQ_MOBILE.matches : window.innerWidth <= BREAKPOINT_MOBILE;
+
     class TravelMap {
         constructor(container, options) {
             this.container = typeof container === 'string' ? document.querySelector(container) : container;
             if (!this.container) {
                 return;
             }
-            
-            // 获取容器ID，如果容器已有ID则使用，否则生成新ID
+
             this.mapId = this.container.id || this.generateMapId();
-            
+
+            const ajaxConfig = (typeof window.travelMapAjax === 'object' && window.travelMapAjax) ? window.travelMapAjax : {};
+            const s = ajaxConfig.settings || {};
+
             this.options = Object.assign({
                 zoom: 2,
                 center: [116.4074, 39.9042],
                 markers: [],
                 showFilterTabs: true,
                 apiKey: '',
-                mapStyle: 'light', // 保持light样式
-                defaultStatus: 'all' // 添加默认状态选项
+                // 空串而非 'all'：非空即代表调用方显式指定了状态，需压过后台设置项。
+                defaultStatus: '',
+                filters: null,          // 短代码裁剪的按钮集（数组或逗号分隔字符串）
+                clusterRadius: s.clusterRadius || 40,
+                clusterLimit: s.clusterLimit || 9,
+                autoZoom: s.autoZoom !== false,
+                highlightCountry: s.highlightCountry !== false,
+                showYearlyStats: s.showYearlyStats !== false,
+                showTypeStats: s.showTypeStats !== false,
+                defaultFilterStatus: s.defaultFilterStatus || 'all',
+                minZoom: s.minZoom || 1,
+                maxZoom: s.maxZoom || 12,
+                flagsBase: ajaxConfig.flagsBase || '',
+                geojsonUrl: ajaxConfig.geojsonUrl || '',
+                restUrl: ajaxConfig.restUrl || ''
             }, options);
-            
+
             this.map = null;
-            this.markers = [];
-            this.currentFilter = this.options.defaultStatus || 'all'; // 使用传入的状态
-            this.popup = null;
-            this.themeObserver = null; // 主题变化监听器
-            
+            this.cluster = null;
+            this.infoWindow = null;
+            this.districtLayer = null;
+            this.allFeatures = [];      // GeoJSON features 全量
+            this.currentFeatures = [];  // 当前筛选后
+            this.filterStatus = 'all';
+            this._renderableFilters = null;
+            this._defaultStatus = null;
+            this.filterBar = null;
+            this.statsEl = null;
+            this.yearStatsEl = null;
+            this.tenDashPolylines = [];
+            this.themeObserver = null;
+
             this.init();
         }
-        
+
         init() {
-            // 检查容器类型
             const existingMapDiv = this.container.querySelector('.travel-map');
             if (existingMapDiv && existingMapDiv.id) {
-                // 如果是传入的外层容器，并且已经包含地图结构，直接使用
                 this.mapId = existingMapDiv.id;
                 this.mapContainer = this.container;
-                this.addEmbeddedFiltersToExisting();
             } else if (this.container.classList.contains('travel-map')) {
-                // 如果直接传入的是地图div元素，需要找到外层容器
                 this.mapId = this.container.id;
                 this.mapContainer = this.container.closest('.travel-map-container') || this.container.parentElement;
-                this.addEmbeddedFiltersToExisting();
             } else {
                 this.mapContainer = this.container;
                 this.setupContainer();
             }
-            
+
             this.setupFilterTabs();
+            this.setupFullscreenControl();
             this.setupMap();
             this.bindEvents();
-            // 防止主题图片浏览器的全局事件处理
+            this.observeContainerSize();
+            this.syncPopupMaxWidth();
             this.preventThemeConflicts();
         }
-        
+
         setupContainer() {
-            // 创建地图HTML结构
             const html = `
                 <div class="travel-map-container">
                     <div class="travel-map-wrapper">
@@ -99,1161 +174,1128 @@
                             <div class="travel-map-loading-text">正在加载地图...</div>
                         </div>
                         <div class="travel-map" id="${this.mapId}"></div>
-                        ${this.options.showFilterTabs ? this.createEmbeddedFilterTabs() : ''}
                         <div class="travel-map-controls">
-                            <button class="travel-map-control-btn" data-action="zoom-in" title="放大">
-                                <svg viewBox="0 0 24 24" fill="currentColor">
+                            <button class="travel-map-control-btn" data-action="zoom-in" type="button" title="放大" aria-label="放大地图">
+                                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
                                     <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
                                 </svg>
                             </button>
-                            <button class="travel-map-control-btn" data-action="zoom-out" title="缩小">
-                                <svg viewBox="0 0 24 24" fill="currentColor">
+                            <button class="travel-map-control-btn" data-action="zoom-out" type="button" title="缩小" aria-label="缩小地图">
+                                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
                                     <path d="M19 13H5v-2h14v2z"/>
                                 </svg>
                             </button>
-                            <button class="travel-map-control-btn" data-action="fullscreen" title="全屏">
-                                <svg viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
+                            <button class="travel-map-control-btn" data-action="back" type="button" title="返回" aria-label="返回总览视图">
+                                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+                                    <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
                                 </svg>
                             </button>
-                            <button class="travel-map-control-btn" data-action="reset" title="重置视图">
-                                <svg viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/>
+                            <button class="travel-map-control-btn" data-action="fullscreen" type="button" title="全屏" aria-label="全屏显示地图" aria-pressed="false">
+                                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+                                    <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
                                 </svg>
                             </button>
                         </div>
                     </div>
                 </div>
             `;
-            
             this.container.innerHTML = html;
         }
-        
-        createFilterTabs() {
-            const activeStatus = this.options.defaultStatus || 'all';
-            return `
-                <div class="travel-map-filters">
-                    <a href="#" class="travel-map-filter-tab ${activeStatus === 'all' ? 'active' : ''} all" data-status="all">全部</a>
-                    <a href="#" class="travel-map-filter-tab ${activeStatus === 'visited' ? 'active' : ''} visited" data-status="visited">已去</a>
-                    <a href="#" class="travel-map-filter-tab ${activeStatus === 'want_to_go' ? 'active' : ''} want_to_go" data-status="want_to_go">想去</a>
-                    <a href="#" class="travel-map-filter-tab ${activeStatus === 'planned' ? 'active' : ''} planned" data-status="planned">计划</a>
-                </div>
-            `;
+
+        // ============ 筛选（§2.6 智能显隐 + 行为链） ============
+
+        parseRequestedFilters() {
+            let requested = this.options.filters;
+            if (requested == null || requested === '') {
+                requested = ['all', 'done', 'wish', 'plan'];
+            }
+            if (typeof requested === 'string') {
+                requested = requested.split(',');
+            }
+            return requested.map(f => String(f).trim()).filter(f => VALID_FILTERS.includes(f));
         }
-        
-        createEmbeddedFilterTabs() {
-            const activeStatus = this.options.defaultStatus || 'all';
-            return `
-                <div class="travel-map-embedded-filters">
-                    <a href="#" class="travel-map-filter-tab ${activeStatus === 'all' ? 'active' : ''} all" data-status="all">全部</a>
-                    <a href="#" class="travel-map-filter-tab ${activeStatus === 'visited' ? 'active' : ''} visited" data-status="visited">已去</a>
-                    <a href="#" class="travel-map-filter-tab ${activeStatus === 'want_to_go' ? 'active' : ''} want_to_go" data-status="want_to_go">想去</a>
-                    <a href="#" class="travel-map-filter-tab ${activeStatus === 'planned' ? 'active' : ''} planned" data-status="planned">计划</a>
-                </div>
-            `;
+
+        computeStatusCounts(features) {
+            const counts = { done: 0, wish: 0, plan: 0 };
+            for (const f of features) {
+                const st = f.properties && f.properties.status;
+                if (Object.prototype.hasOwnProperty.call(counts, st)) {
+                    counts[st]++;
+                }
+            }
+            return counts;
         }
-        
-        /**
-         * 为现有地图结构添加嵌入式筛选标签
-         */
-        addEmbeddedFiltersToExisting() {
-            if (!this.options.showFilterTabs) return;
-            
-            // 检查是否已经存在嵌入式筛选标签
-            const existingFilters = this.mapContainer.querySelector('.travel-map-embedded-filters');
-            if (existingFilters) {
-                // 如果已存在，更新激活状态
-                this.updateFilterTabsActiveState(existingFilters);
+
+        // 数量为 0 的按钮隐藏；状态按钮 ≤1 个有数据时整栏隐藏
+        computeRenderableFilters() {
+            const counts = this._counts || { done: 0, wish: 0, plan: 0 };
+            const requested = this.parseRequestedFilters().length
+                ? this.parseRequestedFilters()
+                : ['all', 'done', 'wish', 'plan'];
+            const statusKeys = ['done', 'wish', 'plan'];
+            const requestedStatuses = requested.filter(f => statusKeys.includes(f));
+            const nonZeroStatuses = requestedStatuses.filter(s => (counts[s] || 0) > 0);
+
+            if (nonZeroStatuses.length <= 1) {
+                this._renderableFilters = [];
+                this._defaultStatus = nonZeroStatuses[0] || (requested.includes('all') ? 'all' : requested[0] || 'all');
                 return;
             }
-            
-            // 查找地图容器
-            const mapWrapper = this.mapContainer.querySelector('.travel-map-wrapper');
-            if (mapWrapper) {
-                // 在地图容器中添加嵌入式筛选标签
-                const filtersHtml = this.createEmbeddedFilterTabs();
-                mapWrapper.insertAdjacentHTML('beforeend', filtersHtml);
+
+            const renderable = requested.filter(f => {
+                if (f === 'all') return true;
+                if (statusKeys.includes(f)) return (counts[f] || 0) > 0;
+                return true;
+            });
+
+            this._renderableFilters = renderable;
+
+            // 缺省状态优先级：短代码显式 status → 后台设置项 → 全部 → 第一个有数据状态。
+            //
+            // 设置项 travel_map_default_filter_status 的取值域含 'all'，语义是
+            // 「首次加载激活哪个页签」，其中 'all' 表示 done/wish/plan 的并集。
+            // 因此它必须排在硬编码的 'all' 之前，否则设置项永远拿不到控制权
+            // —— 这正是此前后台设置在前台失效的原因。
+            //
+            // fromAttr 不再需要排除 'all'：短代码默认值已改为空串（见 PHP
+            // render_map_shortcode），所以 defaultStatus 非空即代表用户显式指定，
+            // 显式写 status="all" 也是一次真实选择，应当压过设置项。
+            const fromAttr = this.options.defaultStatus || null;
+            const fromSetting = this.options.defaultFilterStatus;
+
+            if (fromAttr && renderable.includes(fromAttr)) {
+                this._defaultStatus = fromAttr;
+            } else if (fromSetting && renderable.includes(fromSetting)) {
+                this._defaultStatus = fromSetting;
+            } else if (renderable.includes('all')) {
+                this._defaultStatus = 'all';
+            } else {
+                this._defaultStatus = nonZeroStatuses[0] || 'all';
             }
         }
-        
-        /**
-         * 更新筛选标签的激活状态
-         */
-        updateFilterTabsActiveState(container) {
-            const activeStatus = this.options.defaultStatus || 'all';
-            const tabs = container.querySelectorAll('.travel-map-filter-tab');
-            
-            tabs.forEach(tab => {
-                const tabStatus = tab.getAttribute('data-status');
-                if (tabStatus === activeStatus) {
-                    tab.classList.add('active');
-                } else {
-                    tab.classList.remove('active');
-                }
-            });
+
+        buildFilterBar() {
+            const old = this.mapContainer.querySelector('.travel-map-embedded-filters');
+            if (old) old.remove();
+            this.filterBar = null;
+
+            this.computeRenderableFilters();
+            if (!this.options.showFilterTabs || !this._renderableFilters.length) {
+                return;
+            }
+
+            const bar = document.createElement('div');
+            bar.className = 'travel-map-embedded-filters';
+            bar.setAttribute('role', 'tablist');
+            bar.setAttribute('aria-label', '按状态筛选地点');
+            bar.innerHTML = this._renderableFilters.map(f => {
+                const isActive = this.filterStatus === f;
+                return `<button type="button"
+                        class="travel-map-filter-tab${isActive ? ' active' : ''}"
+                        role="tab"
+                        aria-selected="${isActive ? 'true' : 'false'}"
+                        tabindex="${isActive ? '0' : '-1'}"
+                        data-status="${f}">${STATUS_LABELS[f] || f}</button>`;
+            }).join('');
+            this.mapContainer.querySelector('.travel-map-wrapper').appendChild(bar);
+            this.filterBar = bar;
         }
-        
+
         setupFilterTabs() {
             if (!this.options.showFilterTabs) return;
-            
-            // 使用地图容器来查找筛选标签
+
             const container = this.mapContainer || this.container;
-            
-            // 使用事件委托绑定点击事件
+
             container.addEventListener('click', (e) => {
-                if (e.target.classList.contains('travel-map-filter-tab')) {
+                const tab = e.target.closest('.travel-map-filter-tab');
+                if (tab && container.contains(tab)) {
                     e.preventDefault();
-                    
-                    const status = e.target.getAttribute('data-status');
-                    
-                    // 更新活动状态
-                    const tabs = container.querySelectorAll('.travel-map-filter-tab');
-                    tabs.forEach(tab => tab.classList.remove('active'));
-                    e.target.classList.add('active');
-                    
-                    // 筛选标记
-                    this.filterMarkers(status);
+                    this.selectFilterTab(tab);
                 }
             });
+
+            container.addEventListener('keydown', (e) => {
+                const tab = e.target.closest('.travel-map-filter-tab');
+                if (!tab || !container.contains(tab)) return;
+
+                const tabs = Array.from(container.querySelectorAll('.travel-map-filter-tab'));
+                const index = tabs.indexOf(tab);
+                if (index === -1) return;
+
+                let nextIndex = -1;
+                if (e.key === 'ArrowRight' || e.key === 'ArrowDown') nextIndex = (index + 1) % tabs.length;
+                else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') nextIndex = (index - 1 + tabs.length) % tabs.length;
+                else if (e.key === 'Home') nextIndex = 0;
+                else if (e.key === 'End') nextIndex = tabs.length - 1;
+
+                if (nextIndex === -1) return;
+                e.preventDefault();
+                tabs[nextIndex].focus();
+                this.selectFilterTab(tabs[nextIndex]);
+            });
         }
-        
+
+        selectFilterTab(tab) {
+            const status = tab.getAttribute('data-status');
+            if (!status || status === this.filterStatus) return;
+            this.filterStatus = status;
+            this.updateFilterTabsActiveState();
+            this.applyFilterChain();
+        }
+
+        updateFilterTabsActiveState() {
+            if (!this.filterBar) return;
+            this.filterBar.querySelectorAll('.travel-map-filter-tab').forEach(tab => {
+                const isActive = tab.getAttribute('data-status') === this.filterStatus;
+                tab.classList.toggle('active', isActive);
+                tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+                tab.setAttribute('tabindex', isActive ? '0' : '-1');
+            });
+        }
+
+        // 筛选切换的完整行为链（§2.6）：过滤 → 重建聚合 → fitToMarkers → 统计 → 国家高亮
+        applyFilterChain() {
+            this.applyFilter();
+            this.renderMarkers();
+            if (this.currentFeatures.length) {
+                this.fitToMarkers();
+            } else {
+                // 空结果：回初始中心（§2.6）
+                this.map.setZoomAndCenter(this.options.zoom, this.options.center);
+            }
+            this.updateStatsPanels();
+            if (this.options.highlightCountry) {
+                this.highlightVisitedCountries();
+            }
+        }
+
+        applyFilter() {
+            if (this.filterStatus === 'all') {
+                this.currentFeatures = this.allFeatures;
+            } else {
+                this.currentFeatures = this.allFeatures.filter(
+                    f => f.properties && f.properties.status === this.filterStatus
+                );
+            }
+            this.renderAccessibleList();
+        }
+
+        // ============ 地图与图层 ============
+
         setupMap() {
-            // 检查高德地图API是否已加载
             if (typeof window.AMap === 'undefined') {
                 this.showError('高德地图API未加载，请检查网络连接或API密钥配置');
                 return;
             }
-            
             if (!this.options.apiKey) {
                 this.showError('请先在插件设置中配置高德地图API密钥');
                 return;
             }
-            
-            // 检查地图容器是否存在
-            const mapContainer = document.getElementById(this.mapId);
-            if (!mapContainer) {
+
+            const mapDiv = document.getElementById(this.mapId);
+            if (!mapDiv) {
                 this.showError('地图容器元素未找到，ID: ' + this.mapId);
                 return;
             }
-            
+
             try {
-                // 立即确保容器尺寸正确（在地图初始化之前）
-                this.ensureMapSize();
-                
-                // 移动端优化设置
-                const isMobile = window.innerWidth <= 768;
-                // 获取地图样式
-                const getMapStyle = (style) => {
-                    const styleMap = {
-                        'normal': 'amap://styles/normal',
-                        'light': 'amap://styles/light',
-                        'dark': 'amap://styles/dark',
-                        'satellite': 'amap://styles/satellite'
-                    };
-                    return styleMap[style] || styleMap['light'];
-                };
-                
-                const mapOptions = {
-                    zoom: isMobile ? Math.max(this.options.zoom - 1, 1) : this.options.zoom,
+                // 记下构造时生效的主题，后续 syncMapTheme() 靠它判断是否真需要切样式。
+                const initialThemeMode = this.detectThemeMode();
+                this._appliedThemeMode = initialThemeMode;
+
+                this.map = new AMap.Map(this.mapId, {
+                    zoom: isMobileViewport() ? Math.max(this.options.zoom - 1, this.options.minZoom) : this.options.zoom,
                     center: this.options.center,
-                    mapStyle: this.getMapStyleByTheme(), // 使用主题自适应样式
+                    mapStyle: this.getMapStyleByTheme(initialThemeMode),
+                    zooms: [this.options.minZoom, this.options.maxZoom],  // AMap 2.0 用 zooms 数组控制缩放范围
+                    showOversea: true,   // 境外详细数据增强项，无权限时无副作用
                     showLabel: true,
-                    showBuildingBlock: false,
                     touchZoom: true,
                     doubleClickZoom: true,
-                    scrollWheel: !isMobile, // 移动端禁用滚轮缩放
+                    scrollWheel: !isMobileViewport(),
                     touchZoomCenter: 1
-                };
-                
-                // 初始化地图
-                this.map = new AMap.Map(this.mapId, mapOptions);
-                
-                // 再次确保容器尺寸正确
-                this.ensureMapSize();
-                
-                // 地图加载完成
-                this.map.on('complete', () => {
-                    this.hideLoading();
-                    this.loadMarkers();
-                    // 再次确保尺寸正确
-                    setTimeout(() => {
-                        this.ensureMapSize();
-                        // 在地图加载完成后确保筛选标签存在
-                        this.ensureEmbeddedFiltersExist();
-                    }, 100);
-                    // 初始化主题监听器
-                    this.initThemeObserver();
                 });
-                
-                // 地图加载失败
-                this.map.on('error', (error) => {
+
+                // 主题监听与瓦片加载完成无关，必须在构造后立刻绑定。
+                // 原来它挂在 'complete' 回调里：complete 之前发生的主题切换会全部丢失，
+                // 而 Safari 的加载路径更慢，这个窗口足以漏掉用户的一次切换。
+                this.initThemeObserver();
+
+                this.map.on('complete', () => {
+                    this._mapReady = true;
+                    this.hideLoading();
+                    this.loadData();
+                    // 构造到 complete 之间可能已经切过主题，这里补一次对齐。
+                    this.syncMapTheme();
+                });
+
+                this.map.on('error', () => {
                     this.showError('地图加载失败，请检查网络连接');
                 });
-                
             } catch (error) {
                 this.showError('地图初始化失败: ' + error.message);
             }
         }
-        
-        bindEvents() {
-            const container = this.mapContainer || this.container;
-            
-            // 控制按钮事件
-            container.addEventListener('click', (e) => {
-                if (e.target.classList.contains('travel-map-control-btn') || e.target.closest('.travel-map-control-btn')) {
-                    const btn = e.target.classList.contains('travel-map-control-btn') ? e.target : e.target.closest('.travel-map-control-btn');
-                    const action = btn.getAttribute('data-action');
-                    
-                    if (action === 'zoom-in') {
-                        this.zoomIn();
-                    } else if (action === 'zoom-out') {
-                        this.zoomOut();
-                    } else if (action === 'fullscreen') {
-                        this.toggleFullscreen();
-                    } else if (action === 'reset') {
-                        this.resetView();
-                    }
-                }
-            });
-            
-            // 弹窗关闭事件
-            document.addEventListener('click', (e) => {
-                if (e.target.classList.contains('travel-map-popup')) {
-                    this.closePopup();
-                }
-                if (e.target.classList.contains('travel-map-popup-close')) {
-                    this.closePopup();
-                }
-            });
-            
-            // ESC键关闭弹窗
-            document.addEventListener('keydown', (e) => {
-                if (e.keyCode === 27 && this.popup) {
-                    this.closePopup();
-                }
-            });
-            
-            // 移动端手势支持
-            this.bindMobileGestures();
-            
-            // 屏幕旋转支持
-            this.bindOrientationChange();
-        }
-        
-        bindOrientationChange() {
-            window.addEventListener('orientationchange', () => {
-                setTimeout(() => {
-                    if (this.map) {
-                        this.map.getSize();
-                        
-                        // 移动端旋转后调整缩放级别
-                        if (window.innerWidth <= 768) {
-                            const currentZoom = this.map.getZoom();
-                            if (currentZoom > this.options.zoom) {
-                                this.map.setZoom(this.options.zoom);
-                            }
-                        }
-                    }
-                }, 300);
-            });
-            
-            window.addEventListener('resize', () => {
-                setTimeout(() => {
-                    if (this.map) {
-                        this.map.getSize();
-                    }
-                }, 300);
-            });
-        }
-        
-        bindMobileGestures() {
-            if (!('ontouchstart' in window)) {
-                return; // 不是移动设备
-            }
-            
-            let startX = 0;
-            let startY = 0;
-            const self = this; // 保存实例引用
-            
-            // 弹窗滑动手势支持 - 使用原生 JavaScript
-            document.addEventListener('touchstart', function(e) {
-                if (e.target.closest('.travel-map-popup-content')) {
-                    startX = e.touches[0].clientX;
-                    startY = e.touches[0].clientY;
-                }
-            }, true);
-            
-            document.addEventListener('touchmove', function(e) {
-                if (e.target.closest('.travel-map-popup-content')) {
-                    e.preventDefault(); // 防止页面滚动
-                }
-            }, { passive: false, capture: true });
-            
-            document.addEventListener('touchend', function(e) {
-                if (e.target.closest('.travel-map-popup-content')) {
-                    const endX = e.changedTouches[0].clientX;
-                    const endY = e.changedTouches[0].clientY;
-                    const diffX = endX - startX;
-                    const diffY = endY - startY;
-                    
-                    // 向下滑动关闭弹窗
-                    if (diffY > 100 && Math.abs(diffX) < 50) {
-                        self.closePopup();
-                    }
-                }
-            }, true);
-        }
 
-        requestPublicData(action, payload, onSuccess, onError) {
-            const ajaxConfig = (typeof window.travelMapAjax === 'object' && window.travelMapAjax) ? window.travelMapAjax : {};
-            const ajaxurl = ajaxConfig.ajaxurl || '/wp-admin/admin-ajax.php';
-            const restBase = ajaxConfig.restUrl || '';
-            const nonce = ajaxConfig.nonce || '';
-
-            const formData = new FormData();
-            formData.append('action', action);
-            if (nonce) {
-                formData.append('nonce', nonce);
-            }
-
-            Object.keys(payload || {}).forEach((key) => {
-                const value = payload[key];
-                if (value !== undefined && value !== null) {
-                    formData.append(key, value);
-                }
-            });
-
-            const xhr = new XMLHttpRequest();
-            xhr.open('POST', ajaxurl, true);
-            xhr.onreadystatechange = () => {
-                if (xhr.readyState !== 4) {
-                    return;
-                }
-
-                if (xhr.status === 200) {
-                    try {
-                        const response = JSON.parse(xhr.responseText);
-                        if (response && response.success) {
-                            onSuccess(response.data);
-                            return;
-                        }
-                    } catch (e) {}
-                }
-
-                if ((xhr.status === 401 || xhr.status === 403 || xhr.status === 405) && restBase) {
-                    this.requestPublicDataViaRest(action, payload, onSuccess, onError);
-                    return;
-                }
-
-                onError();
-            };
-            xhr.send(formData);
-        }
-
-        requestPublicDataViaRest(action, payload, onSuccess, onError) {
-            const ajaxConfig = (typeof window.travelMapAjax === 'object' && window.travelMapAjax) ? window.travelMapAjax : {};
-            const restBaseRaw = ajaxConfig.restUrl || '';
-            const endpointMap = {
-                travel_map_get_markers: 'markers',
-                travel_map_get_location_posts: 'location-posts'
-            };
-
-            const endpoint = endpointMap[action];
-            if (!restBaseRaw || !endpoint) {
-                onError();
+        loadData() {
+            const url = this.options.geojsonUrl;
+            if (!url) {
+                this.showError('数据接口未配置');
                 return;
             }
-
-            const restBase = restBaseRaw.endsWith('/') ? restBaseRaw : restBaseRaw + '/';
-            const params = new URLSearchParams();
-            Object.keys(payload || {}).forEach((key) => {
-                const value = payload[key];
-                if (value !== undefined && value !== null && value !== '') {
-                    params.append(key, value);
-                }
-            });
-
-            const url = `${restBase}${endpoint}${params.toString() ? '?' + params.toString() : ''}`;
             const xhr = new XMLHttpRequest();
             xhr.open('GET', url, true);
             xhr.onreadystatechange = () => {
-                if (xhr.readyState !== 4) {
-                    return;
-                }
-
+                if (xhr.readyState !== 4) return;
                 if (xhr.status === 200) {
                     try {
-                        const response = JSON.parse(xhr.responseText);
-                        if (response && response.success) {
-                            onSuccess(response.data);
-                            return;
-                        }
-                    } catch (e) {}
+                        const geojson = JSON.parse(xhr.responseText);
+                        this.allFeatures = Array.isArray(geojson.features) ? geojson.features : [];
+                        this.onDataReady();
+                    } catch (e) {
+                        this.showError('标记数据解析失败');
+                    }
+                } else {
+                    this.showError('标记数据加载失败');
                 }
-
-                onError();
             };
             xhr.send();
         }
-        
-        loadMarkers() {
-            this.requestPublicData(
-                'travel_map_get_markers',
-                { status: this.currentFilter },
-                (data) => {
-                    this.addMarkers(Array.isArray(data) ? data : []);
-                },
-                () => {
-                    this.showError('加载标记数据失败');
-                }
-            );
-        }
-        
-        addMarkers(markersData) {
-            this.clearMarkers();
-            
-            markersData.forEach(markerData => {
-                this.addMarker(markerData);
-            });
-            
-            // 自适应视图
-            if (this.markers.length > 0) {
-                this.fitView();
+
+        onDataReady() {
+            this._counts = this.computeStatusCounts(this.allFeatures);
+            this.buildFilterBar();
+
+            // 初始筛选状态（含回退链）。末位回退用 all 而非 done：
+            // 「全部」是并集语义，缺省应展示全部地点。
+            let initStatus = this._defaultStatus || 'all';
+            if (this.filterBar && this._renderableFilters && this._renderableFilters.length
+                && !this._renderableFilters.includes(initStatus)) {
+                initStatus = this._renderableFilters[0];
             }
-        }
-        
-        addMarker(markerData) {
-            if (!this.map) return;
-            
-            const marker = new AMap.Marker({
-                position: [markerData.longitude, markerData.latitude],
-                title: String(markerData.title || ''),
-                content: this.createMarkerContent(markerData),
-                anchor: 'center'
-            });
-            
-            // 存储原始数据
-            marker.markerData = markerData;
-            
-            // 点击事件
-            marker.on('click', (e) => {
-                // 智能定位：将点击的坐标定位到地图中心偏下位置
-                const markerPosition = [parseFloat(markerData.longitude), parseFloat(markerData.latitude)];
-                
-                // 设置合适的缩放级别
-                const currentZoom = this.map.getZoom();
-                let targetZoom = currentZoom;
-                
-                if (currentZoom < 6) {
-                    targetZoom = 8;
-                } else if (currentZoom >= 6 && currentZoom < 8) {
-                    targetZoom = currentZoom + 1;
-                } else {
-                    targetZoom = Math.min(currentZoom, 8);
-                }
-                
-                // 先设置缩放和基本定位
-                this.map.setZoomAndCenter(targetZoom, markerPosition, false, 300);
-                
-                // 延迟进行偏移调整，确保地图已经完成初始定位
-                setTimeout(() => {
-                    // 计算偏移：将地图中心向上偏移，让标记点显示在中心偏下位置
-                    const mapCenter = this.map.getCenter();
-                    const mapBounds = this.map.getBounds();
-                    
-                    // 计算地图的纬度跨度
-                    const latSpan = mapBounds.getNorthEast().lat - mapBounds.getSouthWest().lat;
-                    
-                    // 向上偏移25%的地图高度（增加偏移量）
-                    const offsetLatitude = latSpan * 0.25;
-                    
-                    // 创建偏移后的坐标（确保使用数值计算）
-                    const offsetPosition = [
-                        parseFloat(markerData.longitude), 
-                        parseFloat(markerData.latitude) + offsetLatitude
-                    ];
-                    
-                    // 验证偏移后的坐标是否有效
-                    if (offsetPosition[1] >= -90 && offsetPosition[1] <= 90 && 
-                        offsetPosition[0] >= -180 && offsetPosition[0] <= 180) {
-                        this.map.setCenter(offsetPosition);
-                    }
-                    
-                    // 再延迟一下显示弹窗，确保地图动画完成
-                    setTimeout(() => {
-                        this.showMarkerPopup(markerData, marker);
-                    }, 200);
-                }, 350);
-            });
-            
-            // 添加悬停效果（只对有安全图片URL的标记点）
-            if (markerData.status === 'visited' && safeUrl(markerData.featured_image)) {
-                this.addMarkerHoverEffect(marker, markerData);
+            this.filterStatus = initStatus;
+            this.updateFilterTabsActiveState();
+
+            this.applyFilter();
+            this.renderMarkers();
+            this.buildStatsPanels();
+            this.updateStatsPanels();
+
+            if (this.options.autoZoom) {
+                this.fitToMarkers();
+            } else {
+                this.map.setZoomAndCenter(this.options.zoom, this.options.center);
             }
-            
-            // 添加到地图
-            this.map.add(marker);
-            this.markers.push(marker);
-        }
-        
-        addMarkerHoverEffect(marker, markerData) {
-            // 获取标记点的DOM元素
-            const markerEl = marker.getContent();
-            if (markerEl && markerEl.querySelector) {
-                const imageEl = markerEl.querySelector('img');
-                
-                if (imageEl) {
-                    // 鼠标进入事件
-                    imageEl.addEventListener('mouseenter', () => {
-                        this.showHoverPreview(markerData, marker);
-                    });
-                    
-                    // 鼠标离开事件
-                    imageEl.addEventListener('mouseleave', () => {
-                        this.hideHoverPreview();
-                    });
-                }
+
+            if (this.options.highlightCountry) {
+                this.highlightVisitedCountries();
             }
+            this.renderTenDashLines();
+
+            this.mapContainer.classList.add('is-loaded');
         }
-        
-        showHoverPreview(markerData, marker) {
-            // 移除现有预览
-            this.hideHoverPreview();
-            
-            // 获取标记点在地图上的像素位置
-            const pixel = this.map.lngLatToContainer([markerData.longitude, markerData.latitude]);
-            
-            const preview = document.createElement('div');
-            const safeTitle = escapeHtml(markerData.title || '');
-            const safeImage = safeUrl(markerData.featured_image);
-            if (!safeImage) {
+
+        // ============ 聚合渲染（§2.3） ============
+
+        renderMarkers() {
+            if (!this.map || !this.cluster) {
+                this.initCluster();
                 return;
             }
-            preview.className = 'travel-map-hover-preview';
-            preview.innerHTML = `
-                <div class="hover-preview-content">
-                    <img src="${safeImage}" alt="${safeTitle}">
-                    <div class="hover-preview-title">${safeTitle}</div>
-                </div>
-            `;
-            
-            // 计算位置
-            const container = this.container;
-            const containerRect = container.getBoundingClientRect();
-            
-            preview.style.position = 'absolute';
-            preview.style.left = (containerRect.left + pixel.x - 60) + 'px';
-            preview.style.top = (containerRect.top + pixel.y - 120) + 'px';
-            preview.style.zIndex = '9999';
-            
-            document.body.appendChild(preview);
-            this.currentHoverPreview = preview;
-            
-            // 显示动画
-            setTimeout(() => {
-                preview.classList.add('show');
-            }, 10);
+            // MarkerCluster.setData 支持全量替换
+            this.cluster.setData(this.currentFeatures.map(f => ({
+                lnglat: f.geometry.coordinates,
+                __feature: f
+            })));
         }
-        
-        hideHoverPreview() {
-            if (this.currentHoverPreview) {
-                this.currentHoverPreview.classList.remove('show');
-                setTimeout(() => {
-                    if (this.currentHoverPreview && this.currentHoverPreview.parentNode) {
-                        this.currentHoverPreview.parentNode.removeChild(this.currentHoverPreview);
-                    }
-                    this.currentHoverPreview = null;
-                }, 200);
+
+        initCluster() {
+            if (typeof AMap.MarkerCluster === 'undefined') {
+                this.showError('点聚合插件未加载');
+                return;
             }
-        }
-        
-        createMarkerContent(markerData) {
-            const colors = travelMapAjax.colors || {
-                visited: '#ff6b35',
-                want_to_go: '#3b82f6',
-                planned: '#10b981'
-            };
-            
-            const color = colors[markerData.status] || '#6b7280';
-            const safeTitle = escapeHtml(markerData.title || '');
-            const safeImage = safeUrl(markerData.featured_image);
-            const safeVisitCount = safeNumberText(markerData.visit_count, '1');
-            
-            // 如果是"已去"状态且有文章图片，显示图片标记（不显示数字，更美观）
-            if (markerData.status === 'visited' && safeImage) {
-                return `
-                    <div class="travel-marker travel-marker-with-image" style="
-                        width: 28px;
-                        height: 28px;
-                        border-radius: 50%;
-                        overflow: hidden;
-                        border: 1px solid ${color};
-                        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-                        cursor: pointer;
-                        position: relative;
-                        background: #fff;
-                    ">
-                        <img src="${safeImage}" 
-                             alt="${safeTitle}" 
-                             style="
-                                 width: 100%;
-                                 height: 100%;
-                                 object-fit: cover;
-                             ">
-                    </div>
-                `;
-            }
-            
-            // 默认显示圆形标记（只有没有图片时才显示数字）
-            return `
-                <div class="travel-marker travel-marker-default" style="
-                    width: 24px;
-                    height: 24px;
-                    background: ${color};
-                    border: 1px solid #fff;
-                    border-radius: 50%;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    color: #fff;
-                    font-weight: bold;
-                    font-size: 10px;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-                    cursor: pointer;
-                ">${safeVisitCount}</div>
-            `;
-        }
-        
-        showMarkerPopup(markerData, marker) {
-            // 保存当前弹窗关联的标记数据，用于地图移动时更新位置
-            this.currentPopupMarkerData = markerData;
-            
-            // 直接显示弹窗（内部会关闭旧弹窗），不再做额外的缩放和定位处理（已在点击事件中处理）
-            this.showPopupForMarker(markerData);
-            
-            // 绑定地图移动事件，使弹窗跟随标记移动
-            this.bindPopupMapEvents();
-        }
-        
-        showPopupForMarker(markerData) {
-            // 获取标记点在地图上的像素位置
-            const pixel = this.map.lngLatToContainer([markerData.longitude, markerData.latitude]);
-            
-            // 根据状态显示不同的弹窗
-            if (markerData.status === 'visited') {
-                this.showArticlePopup(markerData, pixel);
-            } else {
-                this.showSimplePopup(markerData, pixel);
-            }
-        }
-        
-        /**
-         * 绑定地图事件，使弹窗跟随标记移动
-         */
-        bindPopupMapEvents() {
-            // 移除之前绑定的事件（如果有）
-            this.unbindPopupMapEvents();
-            
-            // 创建事件处理函数
-            this._popupMapMoveHandler = () => {
-                if (this.popup && this.currentPopupMarkerData) {
-                    this.updatePopupPosition();
-                }
-            };
-            
-            // 监听地图移动和缩放事件
-            this.map.on('move', this._popupMapMoveHandler);
-            this.map.on('zoom', this._popupMapMoveHandler);
-            this.map.on('zoomchange', this._popupMapMoveHandler);
-            this.map.on('resize', this._popupMapMoveHandler);
-            
-            // 特别针对移动端触摸事件的兼容处理
-            // 高德地图在移动端的触摸操作会触发 movestart/moveend 事件
-            this._popupMapMoveStartHandler = () => {
-                // 移动开始时不做处理
-            };
-            this._popupMapMoveEndHandler = () => {
-                // 移动结束后立即更新位置
-                if (this.popup && this.currentPopupMarkerData) {
-                    this.updatePopupPosition();
-                }
-            };
-            
-            this.map.on('movestart', this._popupMapMoveStartHandler);
-            this.map.on('moveend', this._popupMapMoveEndHandler);
-        }
-        
-        /**
-         * 解绑地图事件
-         */
-        unbindPopupMapEvents() {
-            if (this._popupMapMoveHandler) {
-                this.map.off('move', this._popupMapMoveHandler);
-                this.map.off('zoom', this._popupMapMoveHandler);
-                this.map.off('zoomchange', this._popupMapMoveHandler);
-                this.map.off('resize', this._popupMapMoveHandler);
-                this._popupMapMoveHandler = null;
-            }
-            
-            if (this._popupMapMoveStartHandler) {
-                this.map.off('movestart', this._popupMapMoveStartHandler);
-                this._popupMapMoveStartHandler = null;
-            }
-            
-            if (this._popupMapMoveEndHandler) {
-                this.map.off('moveend', this._popupMapMoveEndHandler);
-                this._popupMapMoveEndHandler = null;
-            }
-        }
-        
-        /**
-         * 更新弹窗位置
-         */
-        updatePopupPosition() {
-            if (!this.popup || !this.currentPopupMarkerData) return;
-            
-            const markerData = this.currentPopupMarkerData;
-            const pixel = this.map.lngLatToContainer([markerData.longitude, markerData.latitude]);
-            
-            if (pixel && pixel.x !== undefined && pixel.y !== undefined) {
-                const popupRect = this.popup.getBoundingClientRect();
-                const containerRect = this.container.getBoundingClientRect();
-                
-                // 响应式距离计算：根据设备和屏幕宽度调整
-                const isMobile = window.innerWidth <= 768;
-                const arrowGap = isMobile ? 6 : 8; // 移动端箭头间隙增加到 6px
-                const markerRadius = isMobile ? 14 : 14; // 移动端标记点半径增加到 14px
-                
-                // 计算相对容器的位置
-                let left = pixel.x - (popupRect.width / 2);
-                let top = pixel.y - popupRect.height - arrowGap - markerRadius;
-                
-                // 边界检查
-                const containerWidth = containerRect.width;
-                const containerHeight = containerRect.height;
-                
-                // 水平边界检查
-                if (left < 10) left = 10;
-                if (left + popupRect.width > containerWidth - 10) {
-                    left = containerWidth - popupRect.width - 10;
-                }
-                
-                // 垂直边界检查
-                if (top < 10) {
-                    top = pixel.y + arrowGap + markerRadius; // 显示在标记点下方
-                    this.popup.classList.add('popup-below');
-                } else {
-                    this.popup.classList.remove('popup-below');
-                }
-                
-                if (top + popupRect.height > containerHeight - 10) {
-                    top = Math.max(10, containerHeight - popupRect.height - 10);
-                }
-                
-                // 使用 requestAnimationFrame 优化动画性能（特别是在移动端）
-                if (window.requestAnimationFrame) {
-                    window.requestAnimationFrame(() => {
-                        this.popup.style.left = left + 'px';
-                        this.popup.style.top = top + 'px';
-                    });
-                } else {
-                    this.popup.style.left = left + 'px';
-                    this.popup.style.top = top + 'px';
-                }
-            }
-        }
-        
-        showArticlePopup(markerData, pixel) {
-            this.requestPublicData(
-                'travel_map_get_location_posts',
-                {
-                    latitude: markerData.latitude,
-                    longitude: markerData.longitude,
-                    location_name: markerData.title
-                },
-                (data) => {
-                    if (Array.isArray(data) && data.length > 0) {
-                        this.renderArticlePopup(markerData, data, pixel);
-                    } else {
-                        this.showSimplePopup(markerData, pixel);
-                    }
-                },
-                () => {
-                    this.showSimplePopup(markerData, pixel);
-                }
-            );
-        }
-        
-        renderArticlePopup(markerData, articles, pixel) {
-            // 按照参考图重新设计：顶部特色图 + 地点信息 + 文章标题列表
-            const latestArticle = articles.length > 0 ? articles[0] : null;
-            const featuredImage = latestArticle && latestArticle.featured_image ? safeUrl(latestArticle.featured_image) : null;
-            const safeLocationName = escapeHtml(markerData.title || '');
-            
-            const popupHtml = `
-                <div class="travel-map-enhanced-popup travel-map-custom-popup" 
-                     data-travel-map-popup="true" 
-                     data-no-lightbox="true" 
-                     data-no-fancybox="true"
-                     data-prevent-gallery="true">
-                    <button class="travel-map-popup-close" type="button">&times;</button>
-                    
-                    ${featuredImage ? `
-                    <div class="popup-header-image">
-                        <img src="${featuredImage}" alt="${safeLocationName}">
-                    </div>
-                    ` : ''}
-                    
-                    <div class="popup-location-header">
-                        <span class="location-flag">📍</span>
-                        <span class="location-name">${safeLocationName}</span>
-                    </div>
-                    
-                    <div class="popup-articles-list">
-                        ${articles.map(article => `
-                            <div class="popup-article-item" data-url="${escapeHtml(safeUrl(article.permalink))}" data-travel-map-article="true">
-                                ${escapeHtml(article.title || '')}
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            `;
-            
-            this.showCustomPopup(popupHtml, pixel);
-        }
-        
-        showCustomPopup(html, pixel) {
-            // 关闭现有弹窗（但不解绑事件，因为后面会重新绑定）
-            this._closePopupOnly();
-            
-            const popupEl = document.createElement('div');
-            popupEl.innerHTML = html;
-            this.popup = popupEl.firstElementChild;
-            
-            // 添加到地图容器
-            this.container.appendChild(this.popup);
-            
-            // 设置基本样式
-            this.popup.style.position = 'absolute';
-            this.popup.style.zIndex = '10001';
-            this.popup.style.pointerEvents = 'auto';
-            
-            // 计算位置
-            if (pixel && pixel.x !== undefined && pixel.y !== undefined) {
-                // 获取弹窗尺寸
-                this.popup.style.visibility = 'hidden';
-                this.popup.style.display = 'block';
-                const popupRect = this.popup.getBoundingClientRect();
-                
-                // 计算初始位置（默认显示在标记点上方，为箭头预留空间）
-                // 考虑标记点的实际尺寸，确保箭头指向标记点中心
-                // 响应式距离计算：根据设备和屏幕宽度调整
-                const isMobile = window.innerWidth <= 768;
-                const arrowGap = isMobile ? 6 : 8; // 移动端箭头间隙增加到 6px
-                const markerRadius = isMobile ? 14 : 14; // 移动端标记点半径增加到 14px
-                                
-                let left = pixel.x - (popupRect.width / 2);
-                let top = pixel.y - popupRect.height - arrowGap - markerRadius;
-                
-                // 边界检查
-                const containerWidth = this.container.offsetWidth;
-                const containerHeight = this.container.offsetHeight;
-                
-                // 水平边界检查
-                if (left < 10) left = 10;
-                if (left + popupRect.width > containerWidth - 10) {
-                    left = containerWidth - popupRect.width - 10;
-                }
-                
-                // 垂直边界检查：如果上方空间不足，显示在标记点下方
-                if (top < 10) {
-                    top = pixel.y + arrowGap + markerRadius; // 显示在标记点下方，调整距离
-                    this.popup.classList.add('popup-below'); // 添加样式标记
-                } else {
-                    this.popup.classList.remove('popup-below');
-                }
-                
-                // 确保不超出底部边界
-                if (top + popupRect.height > containerHeight - 10) {
-                    top = Math.max(10, containerHeight - popupRect.height - 10);
-                }
-                
-                this.popup.style.left = left + 'px';
-                this.popup.style.top = top + 'px';
-                this.popup.style.visibility = 'visible';
-            } else {
-                this.popup.style.left = '50%';
-                this.popup.style.top = '50%';
-                this.popup.style.transform = 'translate(-50%, -50%)';
-            }
-            
-            // 显示动画
-            setTimeout(() => {
-                this.popup.classList.add('show');
-            }, 10);
-            
-            // 绑定事件
-            this.bindCustomPopupEvents();
-        }
-        
-        bindCustomPopupEvents() {
-            if (!this.popup) return;
-            
-            // 绑定关闭按钮
-            const closeBtn = this.popup.querySelector('.travel-map-popup-close, .travel-map-simple-popup-close');
-            if (closeBtn) {
-                closeBtn.addEventListener('click', (e) => {
-                    // 不阻止事件传播，让关闭操作能完成
-                    this.closePopup();
-                }, false); // 使用冒泡阶段
-            }
-            
-            // 绑定文章点击事件
-            const articleItems = this.popup.querySelectorAll('.popup-article-item');
-            articleItems.forEach(item => {
-                item.addEventListener('click', (e) => {
-                    // 不阻止事件传播，让链接正常打开
-                    const url = safeUrl(item.getAttribute('data-url'));
-                    if (url) {
-                        window.open(url, '_blank');
-                    }
-                }, false); // 使用冒泡阶段
+
+            this.cluster = new AMap.MarkerCluster(this.map, [], {
+                gridSize: this.options.clusterRadius,
+                renderClusterMarker: (context) => this.renderClusterMarker(context),
+                renderMarker: (context) => this.renderSingleMarker(context)
             });
-            
-            // 点击外部关闭弹窗（但不阻止弹窗内部点击）
-            const outsideClickHandler = (e) => {
-                // 检查弹窗是否存在，避免空指针错误
-                if (!this.popup) {
-                    document.removeEventListener('click', outsideClickHandler, true);
+
+            // 点击聚合：按子点范围展开视野。
+            // setFitView(null) 会把全部覆盖物（十段线/国家图层）都算进视野，
+            // 导致"越点越小"，所以用子点坐标显式算范围。
+            this.cluster.on('click', (item) => {
+                if (!item || item.cluster === undefined) return;
+                const clusterData = item.clusterData || (item.cluster && item.cluster.clusterData) || [];
+                const lnglats = clusterData
+                    .map(d => (d.lnglat ? [d.lnglat.lng !== undefined ? d.lnglat.lng : d.lnglat[0], d.lnglat.lat !== undefined ? d.lnglat.lat : d.lnglat[1]] : null))
+                    .filter(Boolean);
+                if (!lnglats.length) return;
+
+                // 单点聚合：不缩放，弹窗交给 renderSingleMarker 的 click
+                if (lnglats.length === 1) return;
+
+                this.fitToCoords(lnglats);
+            });
+
+            this.cluster.setData(this.currentFeatures.map(f => ({
+                lnglat: f.geometry.coordinates,
+                __feature: f
+            })));
+        }
+
+        renderClusterMarker(context) {
+            const count = Math.min(this.options.clusterLimit, context.count);
+            const el = document.createElement('div');
+            el.className = 'marker cluster';
+            el.setAttribute('data-cardinality', count);
+            el.setAttribute('role', 'img');
+            el.setAttribute('aria-label', 'Map marker');
+            context.marker.setContent(el);
+            // MarkerCluster 默认以内容左上角为锚点；显式使用中心点，保证数字气泡
+            // 和坐标位置在内容尺寸变化时仍保持一致。
+            context.marker.setAnchor('center');
+            context.marker.setOffset(new AMap.Pixel(0, 0));
+        }
+
+        renderSingleMarker(context) {
+            const data = context.data && context.data[0];
+            const feature = data && data.__feature;
+            if (!feature) {
+                context.marker.setContent(document.createElement('div'));
+                return;
+            }
+            context.marker.setContent(this.createMarkerElement(feature.properties));
+            // 自定义内容的默认锚点是左上角，不能用 CSS transform 代替地图锚点，
+            // 否则 hover 放大和信息窗体箭头都会相对经纬度偏移。
+            context.marker.setAnchor('center');
+            context.marker.setOffset(new AMap.Pixel(0, 0));
+            context.marker.on('click', () => {
+                this.openMarkerPopup(feature);
+            });
+        }
+
+        // ============ 标记六形态（§2.4） ============
+
+        createMarkerElement(props) {
+            const status = props.status;
+            const images = Array.isArray(props.image) ? props.image : [];
+            const photo = safeUrl(images[0]);
+            const posts = Array.isArray(props.posts) ? props.posts : [];
+            const hasPost = status !== 'done' || posts.length > 0;
+
+            const marker = document.createElement('div');
+            marker.className = 'marker travel-marker-hit';
+            if (status === 'done') marker.classList.add('marker--done');
+            if (status === 'plan') marker.classList.add('marker--plan');
+            if (status === 'wish') marker.classList.add('marker--wish');
+            if (photo) {
+                marker.classList.add('has-photo');
+                marker.style.setProperty('--photo', `url("${photo}")`);
+            } else {
+                marker.classList.add('no-hover');
+            }
+            if (status === 'done' && posts.length === 0) {
+                marker.classList.add('no-post');
+            }
+            marker.setAttribute('role', 'button');
+            marker.setAttribute('tabindex', '0');
+            marker.setAttribute('aria-expanded', 'false');
+            marker.setAttribute('aria-label', String(props.title || ''));
+            return marker;
+        }
+
+        // ============ 弹窗（§2.5） ============
+
+        openMarkerPopup(feature) {
+            const p = feature.properties || {};
+            const posts = Array.isArray(p.posts) ? p.posts : [];
+            const images = Array.isArray(p.image) ? p.image : [];
+            const cover = safeUrl(images[0]);
+            const years = Array.isArray(p.year) ? p.year : [];
+            const country = String(p.country || '').toUpperCase();
+            const firstCode = country ? country.split(',')[0] : '';
+            const flagUrl = firstCode && this.options.flagsBase
+                ? safeUrl(this.options.flagsBase + firstCode.toLowerCase() + '.svg') : '';
+
+            let contentHtml = '';
+            if (posts.length > 0) {
+                contentHtml = posts.map(post => {
+                    const href = safeUrl(post.permalink);
+                    if (!href) return '';
+                    // 完整标题写进 title 属性：CSS 把超长标题省略成一行，hover 显示全文。
+                    const title = escapeHtml(post.title);
+                    return `<div class="travel-map-popup-link"><a target="_blank" href="${href}" title="${title}">${title}</a></div>`;
+                }).join('');
+            } else if (p.status === 'plan') {
+                contentHtml = `<div class="travel-map-popup-note">计划日期：${escapeHtml(p.plan_date || '未定')}</div>`;
+            } else if (p.status === 'wish') {
+                contentHtml = `<div class="travel-map-popup-note">想去理由：${escapeHtml(p.wish_reason || '无')}</div>`;
+            } else {
+                contentHtml = '<div>该地点暂无游记。</div>';
+            }
+
+            let yearsHtml = '';
+            if (years.length > 0) {
+                yearsHtml = '<div class="travel-map-popup-years">'
+                    + years.map(y => `<span class="travel-map-year-chip">${escapeHtml(y)}</span>`).join(' ')
+                    + '</div>';
+            }
+
+            // isCustom 模式下 AMap 不生成 .amap-info-content，内容直接挂在
+            // .amap-info-contentContainer 上。所以卡片样式必须挂在自己的根节点上，
+            // 不能依赖高德的内部类名，否则整套弹窗 CSS 都不会命中。
+            const html =
+                '<div class="travel-map-popup">'
+                + '<button type="button" class="travel-map-popup-close" aria-label="关闭">×</button>'
+                + '<div class="travel-map-popup-header">'
+                + (cover ? `<img src="${cover}" alt="${escapeHtml(p.title)}" class="travel-map-popup-cover">` : '')
+                + '<div class="travel-map-popup-name">'
+                + (flagUrl ? `<img src="${flagUrl}" class="travel-map-popup-flag" alt="${escapeHtml(firstCode)}">` : '')
+                + escapeHtml(p.title)
+                + '</div></div>'
+                + `<div class="travel-map-popup-content">${contentHtml}${yearsHtml}</div>`
+                + '</div>';
+
+            const position = feature.geometry.coordinates;
+
+            // 开窗前先按当前容器宽度收敛卡片宽度，避免用旧值测量
+            this.syncPopupMaxWidth();
+
+            // 位置在开窗前一次算准：先离屏量尺寸，再据此决定摆上方还是下方、
+            // 水平推移多少。不再开完窗用 panBy 补偿（那会改视野，违反规格 §2.5，
+            // 且动画期间可能把卡片甩出视窗）。
+            const size = this.measurePopupSize(html);
+            const placement = this.computePopupPlacement(position, size);
+
+            // 把翻面标记与箭头位置注入卡片根节点。html 先按无状态构建是为了
+            // 让上面的离屏测量拿到与最终一致的尺寸（class/style 不影响尺寸）。
+            const finalHtml = html.replace(
+                '<div class="travel-map-popup">',
+                '<div class="travel-map-popup' + (placement.below ? ' is-below' : '') + '"'
+                    + ' style="--tm-arrow-left:' + placement.arrowLeft + 'px">'
+            );
+
+            // 锚点变了就重建窗体：setAnchor 依赖已存在的 DOM，首次开窗时拿不到，
+            // 重建比追时序稳，代价只是一次实例化。
+            if (this.infoWindow && this._popupAnchor !== placement.anchor) {
+                try { this.infoWindow.close(); } catch (e) { /* no-op */ }
+                this.infoWindow = null;
+            }
+            if (!this.infoWindow) {
+                this.infoWindow = new AMap.InfoWindow({
+                    isCustom: true,
+                    anchor: placement.anchor,
+                    // AMap 的 autoMove 实现就是 panBy（见 SDK T.prototype.Oy），
+                    // 会动视野，必须关掉
+                    autoMove: false
+                });
+            }
+            this._popupAnchor = placement.anchor;
+            this._popupOffsetX = placement.offsetX;
+            this._popupOffsetY = placement.offsetY;
+
+            try {
+                this.infoWindow.setOffset(new AMap.Pixel(placement.offsetX, placement.offsetY));
+            } catch (e) { /* no-op */ }
+
+            this.infoWindow.setContent(finalHtml);
+            this.infoWindow.open(this.map, position);
+            this.verifyPopupPlacement(position);
+
+            // 自定义关闭按钮（每次重开都要重绑；isCustom 模式下 AMap 把内容
+            // 包进 .amap-info-contentContainer，按钮的 click 走我们自己的关闭路径）
+            const infoEl = this.infoWindow.getDOM
+                ? this.infoWindow.getDOM()
+                : document.querySelector('.amap-info-contentContainer');
+            if (infoEl) {
+                const btn = infoEl.querySelector('.travel-map-popup-close');
+                if (btn) {
+                    btn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        this.closePopup();
+                    });
+                }
+            }
+        }
+
+        /**
+         * 离屏量出卡片真实尺寸。
+         *
+         * 位置必须在开窗前一次算准，所以尺寸也得提前拿到。探针挂在地图容器内，
+         * 才能继承 --tm-popup-max-width 与主题变量，量出的值与真实渲染一致。
+         */
+        measurePopupSize(html) {
+            const mapEl = this.mapContainer || this.container;
+            const fallback = { width: 240, height: 200 };
+            if (!mapEl) return fallback;
+
+            const probe = document.createElement('div');
+            probe.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;pointer-events:none';
+            probe.innerHTML = html;
+            mapEl.appendChild(probe);
+
+            let size = fallback;
+            const card = probe.querySelector('.travel-map-popup');
+            if (card) {
+                const box = card.getBoundingClientRect();
+                if (box.width > 0 && box.height > 0) {
+                    size = { width: box.width, height: box.height };
+                }
+            }
+            probe.remove();
+            return size;
+        }
+
+        /**
+         * 算出卡片该摆哪儿：锚点 + 像素偏移 + 箭头横向位置。三件事一起解决，
+         * 且全都不动视野（规格 §2.5：点击标记只开窗）。
+         *
+         *   1. 上方放不下就翻到标记下方。这是目标插件的做法——它给 Mapbox Popup
+         *      不传 anchor，_getAnchor() 便按剩余空间在 top/bottom 间自选，
+         *      从不移动地图。原来我们固定朝上、出界后 panBy 补偿，既会让刚点的
+         *      点跳位置，动画期间还可能把卡片甩出视窗。
+         *   2. 顶部预留筛选栏占位。筛选栏与地图 div 是兄弟节点，而卡片在地图 div
+         *      内部；AMap 给内部容器加了 transform/z-index 形成层叠上下文，
+         *      卡片的 z-index:200 出不了这个上下文，压不过筛选栏的 z-index:10。
+         *      层叠改不动，只能靠几何避让。
+         *   3. 左右溢出用水平偏移收回，箭头用 --tm-arrow-left 单独留在标记正上方。
+         *
+         * 可视区取「地图容器 ∩ 浏览器视窗」：页面滚动时地图可能只露出一条，
+         * 只按容器判断会把卡片摆到屏幕外。
+         */
+        computePopupPlacement(position, size) {
+            const m = POPUP_VIEWPORT_MARGIN;
+            const fallback = {
+                anchor: 'bottom-center',
+                offsetX: 0,
+                offsetY: -POPUP_MARKER_GAP,
+                arrowLeft: size.width / 2,
+                below: false
+            };
+
+            const mapEl = this.mapContainer || this.container;
+            if (!mapEl || !this.map || typeof this.map.lngLatToContainer !== 'function') {
+                return fallback;
+            }
+
+            let px = null;
+            try {
+                px = this.map.lngLatToContainer(position);
+            } catch (e) {
+                return fallback;
+            }
+            if (!px) return fallback;
+            const pxX = typeof px.getX === 'function' ? px.getX() : px.x;
+            const pxY = typeof px.getY === 'function' ? px.getY() : px.y;
+            if (typeof pxX !== 'number' || typeof pxY !== 'number') return fallback;
+
+            const mapBox = mapEl.getBoundingClientRect();
+
+            // 可视上下边界，换算成相对地图容器的坐标
+            const viewTop = Math.max(0, -mapBox.top) + m;
+            const viewBottom = Math.min(mapBox.height, window.innerHeight - mapBox.top) - m;
+
+            // 顶部再让出筛选栏
+            let topLimit = viewTop;
+            const bar = mapEl.querySelector('.travel-map-embedded-filters');
+            if (bar) {
+                const barBox = bar.getBoundingClientRect();
+                if (barBox.height > 0) {
+                    topLimit = Math.max(topLimit, (barBox.bottom - mapBox.top) + m);
+                }
+            }
+
+            // 竖向：默认在标记上方，放不下才翻到下方
+            const roomAbove = (pxY - POPUP_MARKER_GAP) - topLimit;
+            const roomBelow = viewBottom - (pxY + POPUP_MARKER_GAP);
+            let below;
+            if (roomAbove >= size.height) {
+                below = false;
+            } else if (roomBelow >= size.height) {
+                below = true;
+            } else {
+                // 两侧都放不下（容器太矮）：取空间大的一侧，卡片可能仍被裁一点，
+                // 但不会整张飞出可视区
+                below = roomBelow > roomAbove;
+            }
+
+            // 横向：卡片以标记为中心，溢出多少往回推多少
+            const halfW = size.width / 2;
+            let offsetX = 0;
+            const leftEdge = pxX - halfW;
+            const rightEdge = pxX + halfW;
+            if (leftEdge < m) {
+                offsetX = m - leftEdge;
+            } else if (rightEdge > mapBox.width - m) {
+                offsetX = (mapBox.width - m) - rightEdge;
+            }
+
+            // 箭头要留在标记正上/正下方：卡片被推了多少，箭头就往回退多少。
+            // 夹在 [inset, width-inset] 内，避免箭头跑到圆角外面。
+            const arrowLeft = Math.min(
+                Math.max(halfW - offsetX, POPUP_ARROW_INSET),
+                Math.max(size.width - POPUP_ARROW_INSET, POPUP_ARROW_INSET)
+            );
+
+            return {
+                anchor: below ? 'top-center' : 'bottom-center',
+                offsetX: offsetX,
+                offsetY: below ? POPUP_MARKER_GAP : -POPUP_MARKER_GAP,
+                arrowLeft: arrowLeft,
+                below: below
+            };
+        }
+
+        /**
+         * 开窗后按真实渲染结果校一次横向位置。
+         *
+         * 离屏量的尺寸与真实渲染绝大多数时候一致，但字体晚加载等情况会差几像素。
+         * 这里只用 setOffset 收回横向溢出，不平移地图；竖向翻面不在这里做——
+         * 翻面会连带改锚点与箭头方向，与开窗流程互相触发，得不偿失。
+         */
+        verifyPopupPlacement(position) {
+            if (!this.map || !this.infoWindow) return;
+
+            const mapEl = this.mapContainer || this.container;
+            if (!mapEl) return;
+
+            // AMap 2.0 用自己的渲染循环异步定位 .amap-info，只等一帧往往量不到，
+            // 因此按帧重试直到卡片挂上且尺寸非零。
+            let tries = 0;
+            const MAX_TRIES = 20;
+
+            const attempt = () => {
+                if (!this.map || !this.infoWindow) return;
+
+                const popup = mapEl.querySelector('.travel-map-popup');
+                if (!popup || popup.getBoundingClientRect().width === 0) {
+                    if (++tries < MAX_TRIES) window.requestAnimationFrame(attempt);
                     return;
                 }
-                
-                if (!this.popup.contains(e.target)) {
-                    this.closePopup();
-                    document.removeEventListener('click', outsideClickHandler, true);
+
+                const box = popup.getBoundingClientRect();
+                const placement = this.computePopupPlacement(position, {
+                    width: box.width,
+                    height: box.height
+                });
+
+                popup.style.setProperty('--tm-arrow-left', placement.arrowLeft + 'px');
+
+                if (placement.offsetX !== this._popupOffsetX) {
+                    this._popupOffsetX = placement.offsetX;
+                    try {
+                        this.infoWindow.setOffset(
+                            new AMap.Pixel(placement.offsetX, this._popupOffsetY)
+                        );
+                    } catch (e) { /* 老版本无 setOffset，保持开窗时的偏移 */ }
                 }
             };
-            
-            setTimeout(() => {
-                document.addEventListener('click', outsideClickHandler, true);
-            }, 100);
+
+            window.requestAnimationFrame(attempt);
         }
-        
-        switchToArticle(direction) {
-            if (!this.currentArticles || this.currentArticles.length <= 1) return;
-            
-            const container = this.popup.querySelector('.current-article');
-            if (!container) return;
-            
-            let currentIndex = parseInt(container.getAttribute('data-current-index')) || 0;
-            
-            if (direction === 'prev') {
-                currentIndex = currentIndex > 0 ? currentIndex - 1 : this.currentArticles.length - 1;
+
+        /**
+         * 把「容器宽度 - 2×安全边距」写进 --tm-popup-max-width，
+         * 让 .travel-map-popup 在窄容器（如 320px 手机）下自动收缩，
+         * 而不是保持 240px 固定宽被容器的 overflow:hidden 裁掉。
+         */
+        syncPopupMaxWidth() {
+            const mapEl = this.mapContainer || this.container;
+            if (!mapEl) return;
+            const avail = mapEl.clientWidth - POPUP_VIEWPORT_MARGIN * 2;
+            if (avail <= 0) return;
+            mapEl.style.setProperty('--tm-popup-max-width', Math.min(240, avail) + 'px');
+        }
+
+        /**
+         * 关闭弹窗。
+         *
+         * AMap 2.0 isCustom 模式下 infoWindow.close() 只隐藏默认窗体 DOM，
+         * 自定义 content 的容器（.amap-info-contentContainer）不一定被清空，
+         * 因此 close 后再显式移除残留内容，保证任何路径（×/Esc/换标记）都干净。
+         */
+        closePopup() {
+            if (this.infoWindow) {
+                try {
+                    this.infoWindow.close();
+                } catch (e) { /* no-op */ }
+
+                const container = (this.mapContainer || this.container)
+                    .querySelector('.amap-info-contentContainer');
+                if (container && container.firstChild) {
+                    container.innerHTML = '';
+                }
+            }
+        }
+
+        // ============ 视野 ============
+
+        fitToMarkers() {
+            const coords = this.currentFeatures
+                .map(f => f.geometry && f.geometry.coordinates)
+                .filter(c => Array.isArray(c) && c.length === 2);
+
+            if (coords.length === 1) {
+                this.map.setZoomAndCenter(Math.max(this.map.getZoom(), 10), coords[0]);
+            } else if (coords.length > 1) {
+                this.fitToCoords(coords);
+            }
+        }
+
+        /**
+         * 按给定坐标集合自适应视野（带内边距与缩放封顶）。
+         *
+         * 不用 setFitView(null)：null 表示"全部覆盖物"，会把十段线、
+         * 国家图层都卷进视野导致地图缩小；这里只针对目标点算 bounds，
+         * 再以缩放封顶 + 边距换算的方式落到 setBounds 上。
+         */
+        fitToCoords(lnglats) {
+            if (!lnglats || !lnglats.length || !this.map) return;
+
+            let minLng = Infinity, minLat = Infinity, maxLng = -Infinity, maxLat = -Infinity;
+            for (const [lng, lat] of lnglats) {
+                if (lng < minLng) minLng = lng;
+                if (lat < minLat) minLat = lat;
+                if (lng > maxLng) maxLng = lng;
+                if (lat > maxLat) maxLat = lat;
+            }
+
+            // 全部点重合：以该点为中心放大一档
+            if (minLng === maxLng && minLat === maxLat) {
+                this.map.setZoomAndCenter(Math.min(this.map.getZoom() + 1, this.options.maxZoom), [minLng, minLat]);
+                return;
+            }
+
+            // 边距换算：把像素 padding 折成经纬度扩展（近似，足够用于视野留白）
+            const size = this.map.getSize();
+            const w = (size && size.width) || 800;
+            const h = (size && size.height) || 550;
+            const padding = Math.round(Math.min(h, 550) * 0.12); // 与旧实现观感接近的留白
+            const lngSpan = Math.max(maxLng - minLng, 0.01);
+            const latSpan = Math.max(maxLat - minLat, 0.01);
+            const padLng = lngSpan * (padding / Math.min(w, h)) * 2;
+            const padLat = latSpan * (padding / Math.min(w, h)) * 2;
+
+            const bounds = new AMap.Bounds(
+                [minLng - padLng, minLat - padLat],
+                [maxLng + padLng, maxLat + padLat]
+            );
+            this.map.setBounds(bounds);
+
+            // setBounds 无 maxZoom 参数，超出封顶再压回
+            if (this.map.getZoom() > this.options.maxZoom) {
+                this.map.setZoom(this.options.maxZoom);
+            }
+        }
+
+        backToOverview() {
+            if (!this.options.autoZoom) {
+                this.map.setZoomAndCenter(this.options.zoom, this.options.center);
+            } else if (this.currentFeatures.length) {
+                this.fitToMarkers();
             } else {
-                currentIndex = currentIndex < this.currentArticles.length - 1 ? currentIndex + 1 : 0;
-            }
-            
-            this.updateCurrentArticle(currentIndex);
-        }
-        
-        switchToArticleByIndex(index) {
-            if (!this.currentArticles || index >= this.currentArticles.length) return;
-            this.updateCurrentArticle(index);
-        }
-        
-        updateCurrentArticle(index) {
-            const article = this.currentArticles[index];
-            if (!article) return;
-            
-            // 更新主文章区域
-            const container = this.popup.querySelector('.current-article');
-            if (container) {
-                container.setAttribute('data-current-index', index);
-                
-                const titleEl = container.querySelector('.article-title');
-                const excerptEl = container.querySelector('.article-excerpt');
-                const dateEl = container.querySelector('.article-date');
-                const readMoreBtn = container.querySelector('.read-more-btn');
-                
-                if (titleEl) titleEl.textContent = article.title;
-                if (excerptEl) excerptEl.textContent = article.excerpt || '';
-                if (dateEl) dateEl.textContent = article.date;
-                if (readMoreBtn) readMoreBtn.setAttribute('href', article.permalink);
-            }
-            
-            // 更新头部图片
-            const headerImg = this.popup.querySelector('.location-image img');
-            if (headerImg && article.featured_image) {
-                headerImg.src = article.featured_image;
-                headerImg.alt = article.title;
-            }
-            
-            // 更新导航指示器
-            const indicator = this.popup.querySelector('.nav-indicator');
-            if (indicator) {
-                indicator.textContent = `${index + 1}/${this.currentArticles.length}`;
+                this.map.setZoomAndCenter(this.options.zoom, this.options.center);
             }
         }
-        
-        switchArticle(direction) {
-            if (!this.currentArticles || this.currentArticles.length <= 1) return;
-            
-            const container = this.popup.querySelector('.travel-map-article-container');
-            if (!container) return;
-            
-            let currentIndex = parseInt(container.getAttribute('data-current-index')) || 0;
-            
-            if (direction === 'prev') {
-                currentIndex = currentIndex > 0 ? currentIndex - 1 : this.currentArticles.length - 1;
-            } else {
-                currentIndex = currentIndex < this.currentArticles.length - 1 ? currentIndex + 1 : 0;
+
+        // ============ 国家高亮（§2.8） ============
+
+        collectVisitedSOC() {
+            const set = new Set();
+            for (const f of this.allFeatures) {
+                const p = f.properties || {};
+                if (p.status !== 'done') continue;
+                const raw = String(p.country || '').toUpperCase();
+                if (!raw) continue;
+                raw.split(/[,，\s]+/).filter(Boolean).forEach(token => {
+                    if (token.length === 3) {
+                        set.add(token);
+                    } else if (token.length === 2 && ISO2_TO_ISO3[token]) {
+                        set.add(ISO2_TO_ISO3[token]);
+                    }
+                });
             }
-            
-            const article = this.currentArticles[currentIndex];
-            if (article) {
-                // 更新弹窗内容
-                container.setAttribute('data-current-index', currentIndex);
-                
-                const titleEl = container.querySelector('.travel-map-popup-title');
-                const excerptEl = container.querySelector('.travel-map-popup-excerpt');
-                const indicatorEl = this.popup.querySelector('.travel-map-nav-indicator');
-                const actionBtn = this.popup.querySelector('.travel-map-popup-btn');
-                
-                if (titleEl) titleEl.textContent = article.title;
-                if (excerptEl) excerptEl.textContent = article.excerpt || '';
-                if (indicatorEl) indicatorEl.textContent = `${currentIndex + 1} / ${this.currentArticles.length}`;
-                if (actionBtn) actionBtn.setAttribute('onclick', `window.open('${article.permalink}', '_blank')`);
-                
-                // 更新头图
-                const headerImg = this.popup.querySelector('.travel-map-popup-image');
-                if (headerImg && article.featured_image) {
-                    headerImg.src = article.featured_image;
-                    headerImg.alt = article.title;
-                } else if (headerImg && !article.featured_image) {
-                    headerImg.style.display = 'none';
+            return set;
+        }
+
+        highlightVisitedCountries() {
+            try {
+                if (!this.map || typeof AMap.DistrictLayer === 'undefined') return;
+
+                const visited = this.collectVisitedSOC();
+
+                if (!this.districtLayer) {
+                    this.districtLayer = new AMap.DistrictLayer.World({
+                        zIndex: 1,
+                        zooms: [this.options.minZoom, 20],
+                        styles: {
+                            'fill': (props) => visited.has(props.SOC) ? '#6abf69' : 'transparent',
+                            'fill-opacity': 0.35,
+                            'coastline-stroke': ['get', 'color'],
+                            'nation-stroke': '#2e7d32'
+                        }
+                    });
+                    this.map.add(this.districtLayer);
+                } else {
+                    // SOC 集合经闭包引用更新后重新应用样式
+                    this.districtLayer.setStyles({
+                        'fill': (props) => visited.has(props.SOC) ? '#6abf69' : 'transparent',
+                        'fill-opacity': 0.35,
+                        'coastline-stroke': ['get', 'color'],
+                        'nation-stroke': '#2e7d32'
+                    });
                 }
+            } catch (e) {
+                console.warn('highlightVisitedCountries error', e);
             }
         }
-        
-        showSimplePopup(markerData) {
-            const statusTexts = {
-                visited: '已去',
-                want_to_go: '想去',
-                planned: '计划'
-            };
-            
-            let contentHtml = '';
-            
-            const safeTitle = escapeHtml(markerData.title || '');
-            const safeDescription = escapeHtml(markerData.description || '');
-            const safeWishReason = escapeHtml(markerData.wish_reason || '');
-            const safePlannedDate = escapeHtml(markerData.planned_date || '');
-            if (markerData.status === 'planned') {
-                const plannedDate = safePlannedDate ? `计划日期：${safePlannedDate}` : '计划日期：未定';
-                contentHtml = `<div class="info-item">${plannedDate}</div>`;
-                
-                if (safeDescription) {
-                    contentHtml += `<div class="info-item description">地点描述：${safeDescription}</div>`;
-                }
-            } else if (markerData.status === 'want_to_go') {
-                // 想去状态：显示想去理由和地点描述
-                if (safeWishReason) {
-                    contentHtml += `<div class="info-item wish-reason">想去理由：${safeWishReason}</div>`;
-                }
-                
-                if (safeDescription) {
-                    contentHtml += `<div class="info-item description">地点描述：${safeDescription}</div>`;
-                }
-                
-                // 如果两个字段都为空，显示默认状态
-                if (!safeWishReason && !safeDescription) {
-                    contentHtml = `<div class="info-item">状态：想去</div>`;
-                }
-            } else {
-                // 其他状态
-                contentHtml = `<div class="info-item">状态：${statusTexts[markerData.status] || '未知'}</div>`;
-                
-                if (safeDescription) {
-                    contentHtml += `<div class="info-item description">地点描述：${safeDescription}</div>`;
-                }
+
+        // ============ 十段线（§2.9） ============
+
+        renderTenDashLines() {
+            try {
+                if (!this.map || this.tenDashPolylines.length) return;
+
+                const widthFor = (zoom, stops) => {
+                    for (let i = 0; i < stops.length - 1; i++) {
+                        const [z1, w1] = stops[i];
+                        const [z2, w2] = stops[i + 1];
+                        if (zoom <= z1) return w1;
+                        if (zoom < z2) return w1 + (w2 - w1) * (zoom - z1) / (z2 - z1);
+                    }
+                    return stops[stops.length - 1][1];
+                };
+
+                const glowStops = [[3,1.2],[5,2.0],[7,2.8],[10,3.6],[14,5.0]];
+                const mainStops = [[3,0.5],[5,0.8],[7,1.0],[10,1.4],[14,1.8]];
+
+                const build = () => {
+                    const zoom = this.map.getZoom();
+                    const glowW = widthFor(zoom, glowStops);
+                    const mainW = widthFor(zoom, mainStops);
+                    if (!this.tenDashPolylines.length) {
+                        TEN_DASH_LINES.forEach(line => {
+                            const glow = new AMap.Polyline({
+                                path: line, strokeColor: '#a7adb3', strokeOpacity: 0.18,
+                                strokeWeight: glowW, zIndex: 50, cursor: 'default'
+                            });
+                            const main = new AMap.Polyline({
+                                path: line, strokeColor: '#9e9e9e', strokeOpacity: 0.7,
+                                strokeWeight: mainW, zIndex: 51, cursor: 'default'
+                            });
+                            this.map.add([glow, main]);
+                            this.tenDashPolylines.push({ glow, main });
+                        });
+                    } else {
+                        this.tenDashPolylines.forEach(pair => {
+                            pair.glow.setOptions({ strokeWeight: glowW });
+                            pair.main.setOptions({ strokeWeight: mainW });
+                        });
+                    }
+                };
+
+                build();
+                this.map.on('zoomchange', build);
+            } catch (e) {
+                console.warn('十段线加载失败', e);
             }
-            
-            const popupHtml = `
-                <div class="travel-map-simple-popup travel-map-custom-popup" 
-                     data-travel-map-popup="true" 
-                     data-no-lightbox="true" 
-                     data-no-fancybox="true"
-                     data-prevent-gallery="true">
-                    <button class="travel-map-simple-popup-close" type="button">&times;</button>
-                    <div class="travel-map-simple-popup-content">
-                        <div class="travel-map-simple-popup-place">${safeTitle}</div>
-                        <div class="travel-map-simple-popup-info">
-                            ${contentHtml}
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            // 获取标记点像素位置
-            const pixel = this.map.lngLatToContainer([markerData.longitude, markerData.latitude]);
-            this.showCustomPopup(popupHtml, pixel);
         }
-        
-        // 删除了旧的 showSimplePopupNearMarker 方法，现在统一使用 showCustomPopup
-        
-        preventThemeConflicts() {
-            // 在地图容器上添加事件监听，阻止主题的图片浏览器
+
+        // ============ 统计面板（§2.7） ============
+
+        buildStatsPanels() {
+            const wrapper = this.mapContainer.querySelector('.travel-map-wrapper');
+            if (!wrapper) return;
+
+            if (this.options.showTypeStats && !this.statsEl) {
+                this.statsEl = document.createElement('div');
+                this.statsEl.className = 'travel-map-stats-panel';
+                wrapper.appendChild(this.statsEl);
+            }
+            if (this.options.showYearlyStats && !this.yearStatsEl) {
+                this.yearStatsEl = document.createElement('div');
+                this.yearStatsEl.className = 'travel-map-year-panel';
+                wrapper.appendChild(this.yearStatsEl);
+            }
+        }
+
+        updateStatsPanels() {
+            this.buildStatsPanels();
+
+            if (this.statsEl) {
+                const counts = this._counts || { done: 0, wish: 0, plan: 0 };
+                const total = counts.done + counts.wish + counts.plan;
+                const span = (label, key) =>
+                    `<span class="${this.filterStatus === key ? 'active' : ''}">${label}<strong>${counts[key]}</strong></span>`;
+                this.statsEl.innerHTML = span('已去', 'done') + span('想去', 'wish') + span('计划', 'plan')
+                    + `<span class="total">总计<strong>${total}</strong></span>`;
+            }
+
+            if (this.yearStatsEl) {
+                const yearCounts = {};
+                const yearCountries = {};
+                for (const f of this.currentFeatures) {
+                    const p = f.properties || {};
+                    const years = Array.isArray(p.year) ? p.year : [];
+                    const countryTokens = String(p.country || '').toUpperCase()
+                        .split(/[,，\s]+/).filter(Boolean);
+
+                    if (!years.length) {
+                        yearCounts['未知'] = (yearCounts['未知'] || 0) + 1;
+                        if (!yearCountries['未知']) yearCountries['未知'] = new Set();
+                        countryTokens.forEach(c => yearCountries['未知'].add(c));
+                    } else {
+                        for (const y of years) {
+                            const key = y && String(y).trim() ? String(y) : '未知';
+                            yearCounts[key] = (yearCounts[key] || 0) + 1;
+                            if (!yearCountries[key]) yearCountries[key] = new Set();
+                            countryTokens.forEach(c => yearCountries[key].add(c));
+                        }
+                    }
+                }
+
+                const keys = Object.keys(yearCounts).sort((a, b) => {
+                    if (a === '未知') return 1;
+                    if (b === '未知') return -1;
+                    return parseInt(b, 10) - parseInt(a, 10);
+                });
+
+                this.yearStatsEl.innerHTML = keys.map(k => {
+                    const countryCount = yearCountries[k] ? yearCountries[k].size : 0;
+                    const suffix = countryCount > 0 ? ` (${countryCount})` : '';
+                    return `<span class="y-item"><em>${escapeHtml(k)}</em><strong>${yearCounts[k]}${suffix}</strong></span>`;
+                }).join('') || '<span class="y-item empty">无数据</span>';
+            }
+        }
+
+        // ============ 通用（容器/事件/主题等，沿用既有实现） ============
+
+        bindEvents() {
             const container = this.mapContainer || this.container;
-            
-            // 强化事件阻止机制 - 对整个地图区域的图片相关事件进行拦截
+
+            container.addEventListener('click', (e) => {
+                const btn = e.target.closest('.travel-map-control-btn');
+                if (!btn) return;
+                const action = btn.getAttribute('data-action');
+                if (action === 'zoom-in') this.zoomIn();
+                else if (action === 'zoom-out') this.zoomOut();
+                else if (action === 'back') this.backToOverview();
+                else if (action === 'fullscreen') this.toggleFullscreen();
+            });
+
+            document.addEventListener('keydown', (e) => {
+                if (e.keyCode === 27 && this.infoWindow) {
+                    this.closePopup();
+                }
+            });
+
+            // 点击地图空白处关闭弹窗（对齐演示站 closeOnClick 体验）
+            this.map.on('click', () => {
+                if (this.infoWindow) {
+                    this.closePopup();
+                }
+            });
+
+            this.bindOrientationChange();
+        }
+
+        bindOrientationChange() {
+            const scheduleResize = (adjustZoom) => {
+                if (this._resizeTimer) window.clearTimeout(this._resizeTimer);
+                this._resizeTimer = window.setTimeout(() => {
+                    this._resizeTimer = null;
+                    if (!this.map) return;
+                    this.refreshMapSize();
+                    if (adjustZoom && isMobileViewport()) {
+                        const currentZoom = this.map.getZoom();
+                        if (currentZoom > this.options.zoom) {
+                            this.map.setZoom(this.options.zoom);
+                        }
+                    }
+                }, 200);
+            };
+
+            if (window.screen && window.screen.orientation && window.screen.orientation.addEventListener) {
+                window.screen.orientation.addEventListener('change', () => scheduleResize(true));
+            } else {
+                window.addEventListener('orientationchange', () => scheduleResize(true));
+            }
+            window.addEventListener('resize', () => scheduleResize(false));
+        }
+
+        getAccessibleList() {
+            const inside = (this.mapContainer || this.container).querySelector('[data-travel-map-a11y-list]');
+            if (inside) return inside;
+            const parent = (this.mapContainer || this.container).parentElement;
+            return parent ? parent.querySelector('[data-travel-map-a11y-list]') : null;
+        }
+
+        renderAccessibleList() {
+            const list = this.getAccessibleList();
+            if (!list) return;
+
+            if (!this.currentFeatures.length) {
+                list.innerHTML = '<li>当前筛选条件下没有地点</li>';
+                return;
+            }
+
+            list.innerHTML = this.currentFeatures.map((f, index) => {
+                const p = f.properties || {};
+                const label = STATUS_LABELS[p.status] || '地点';
+                return `<li><button type="button" class="travel-map-a11y-item" `
+                    + `data-travel-map-a11y-index="${index}">`
+                    + `${label}：${escapeHtml(p.title || '未命名地点')}</button></li>`;
+            }).join('');
+
+            if (!this._a11yListBound) {
+                this._a11yListBound = true;
+                list.addEventListener('click', (e) => {
+                    const btn = e.target.closest('[data-travel-map-a11y-index]');
+                    if (!btn) return;
+                    const idx = parseInt(btn.getAttribute('data-travel-map-a11y-index'), 10);
+                    const feature = this.currentFeatures[idx];
+                    if (feature) {
+                        this.openMarkerPopup(feature);
+                    }
+                });
+            }
+        }
+
+        preventThemeConflicts() {
+            const container = this.mapContainer || this.container;
             const eventTypes = ['click', 'mousedown', 'mouseup', 'dblclick'];
-            
+
             eventTypes.forEach(eventType => {
                 container.addEventListener(eventType, (e) => {
                     const target = e.target;
-                    
-                    // 检查是否是地图标记点击（保留标记功能）
-                    const isMarkerClick = target.closest('.amap-marker') || 
-                                         target.classList.contains('amap-marker') ||
-                                         target.tagName === 'CANVAS' && target.closest('.amap-maps');
-                    
-                    // 对弹窗内的所有元素进行事件阻止（但允许关闭按钮和文章链接）
-                    if (target.closest('.travel-map-custom-popup')) {
-                        // 允许关闭按钮的点击事件
-                        if (target.classList.contains('travel-map-popup-close') || 
-                            target.classList.contains('travel-map-simple-popup-close') ||
-                            target.closest('.travel-map-popup-close') ||
-                            target.closest('.travel-map-simple-popup-close')) {
-                            return; // 不阻止关闭按钮的事件
+                    const isMarkerClick = target.closest('.amap-marker')
+                        || target.classList.contains('amap-marker')
+                        || (target.tagName === 'CANVAS' && target.closest('.amap-maps'));
+
+                    // 弹窗内允许链接与关闭按钮
+                    if (target.closest('.amap-info')) {
+                        if (target.closest('.travel-map-popup-close') || target.closest('a')) {
+                            return;
                         }
-                        
-                        // 允许文章链接的点击事件
-                        if (target.closest('.popup-article') || target.closest('.popup-article-item')) {
-                            return; // 不阻止文章点击事件
-                        }
-                        
-                        // 其他弹窗内元素的事件需要阻止
                         e.preventDefault();
                         e.stopPropagation();
                         e.stopImmediatePropagation();
                         return false;
                     }
-                    
-                    // 对地图区域内的图片元素进行特殊处理
+
                     if (target.tagName === 'IMG' && !isMarkerClick) {
                         e.preventDefault();
                         e.stopPropagation();
                         e.stopImmediatePropagation();
                         return false;
                     }
-                    
-                    // 检查是否是可能触发主题图片浏览器的元素
-                    if (target.closest('[data-fancybox]') || 
-                        target.closest('[data-lightbox]') ||
-                        target.closest('.gallery') ||
-                        target.closest('.wp-block-gallery') ||
-                        target.classList.contains('attachment-thumbnail') ||
-                        target.classList.contains('wp-post-image')) {
+
+                    if (target.closest('[data-fancybox]') || target.closest('[data-lightbox]')
+                        || target.closest('.gallery') || target.closest('.wp-block-gallery')
+                        || target.classList.contains('attachment-thumbnail')
+                        || target.classList.contains('wp-post-image')) {
                         e.preventDefault();
                         e.stopPropagation();
                         e.stopImmediatePropagation();
@@ -1261,213 +1303,91 @@
                     }
                 }, true);
             });
-            
-            // 额外的全局事件拦截，防止事件冒泡到文档级别
+
             document.addEventListener('click', (e) => {
                 const target = e.target;
-                
-                // 如果是关闭按钮或文章链接，不阻止
-                if (target.classList.contains('travel-map-popup-close') || 
-                    target.classList.contains('travel-map-simple-popup-close') ||
-                    target.closest('.travel-map-popup-close') ||
-                    target.closest('.travel-map-simple-popup-close') ||
-                    target.closest('.popup-article') || 
-                    target.closest('.popup-article-item')) {
-                    return; // 允许这些元素的事件正常冒泡
+                if (target.closest('.travel-map-popup-close') || (target.closest('.amap-info') && target.closest('a'))) {
+                    return;
                 }
-                
-                // 只阻止图片和其他可能触发主题功能的元素
-                if (target.closest('.travel-map-container') && 
-                    (target.tagName === 'IMG' || 
-                     (target.closest('.travel-map-custom-popup') && 
-                      !target.closest('.travel-map-popup-close') && 
-                      !target.closest('.travel-map-simple-popup-close') &&
-                      !target.closest('.popup-article') && 
-                      !target.closest('.popup-article-item')))) {
+                if (target.closest('.travel-map-container') && target.tagName === 'IMG') {
                     e.stopImmediatePropagation();
                 }
             }, true);
-            
-            // 特别针对可能的主题图片浏览器库进行拦截
-            const preventLibraries = ['fancybox', 'lightbox', 'photoswipe', 'swipebox', 'magnific'];
-            preventLibraries.forEach(lib => {
-                if (window[lib] || window[lib.charAt(0).toUpperCase() + lib.slice(1)]) {
-                    // 覆盖可能的初始化函数
-                    const originalInit = window[lib + 'Init'] || window['init' + lib.charAt(0).toUpperCase() + lib.slice(1)];
-                    if (originalInit) {
-                        window[lib + 'Init'] = function(...args) {
-                            // 检查是否在地图容器内，如果是则不初始化
-                            const elements = args[0];
-                            if (elements && elements.closest && elements.closest('.travel-map-container')) {
-                                return;
-                            }
-                            return originalInit.apply(this, args);
-                        };
-                    }
-                }
-            });
         }
-        
-        showPopup(html) {
-            this.closePopup();
-            
-            const popupEl = document.createElement('div');
-            popupEl.innerHTML = html;
-            this.popup = popupEl.firstElementChild;
-            document.body.appendChild(this.popup);
-            
-            setTimeout(() => {
-                this.popup.classList.add('show');
-            }, 10);
-        }
-        
-        /**
-         * 仅关闭弹窗 UI，不解绑事件（用于内部切换弹窗内容时）
-         */
-        _closePopupOnly() {
-            if (this.popup) {
-                this.popup.classList.remove('show');
-                setTimeout(() => {
-                    if (this.popup && this.popup.parentNode) {
-                        this.popup.parentNode.removeChild(this.popup);
-                    }
-                    this.popup = null;
-                }, 300);
-            }
-            
-            // 同时关闭简洁弹窗
-            const simplePopups = document.querySelectorAll('.travel-map-simple-popup');
-            simplePopups.forEach(popup => {
-                popup.classList.remove('show');
-                setTimeout(() => {
-                    if (popup.parentNode) {
-                        popup.parentNode.removeChild(popup);
-                    }
-                }, 200);
-            });
-            
-            // 关闭所有增强弹窗
-            const enhancedPopups = document.querySelectorAll('.travel-map-enhanced-popup');
-            enhancedPopups.forEach(popup => {
-                popup.classList.remove('show');
-                setTimeout(() => {
-                    if (popup.parentNode) {
-                        popup.parentNode.removeChild(popup);
-                    }
-                }, 200);
-            });
-            
-            // 关闭所有自定义弹窗
-            const customPopups = document.querySelectorAll('.travel-map-custom-popup');
-            customPopups.forEach(popup => {
-                popup.classList.remove('show');
-                setTimeout(() => {
-                    if (popup.parentNode) {
-                        popup.parentNode.removeChild(popup);
-                    }
-                }, 200);
-            });
-        }
-        
-        closePopup() {
-            // 解绑地图事件
-            this.unbindPopupMapEvents();
-            
-            // 清除当前弹窗关联的标记数据
-            this.currentPopupMarkerData = null;
-            
-            // 关闭弹窗 UI
-            this._closePopupOnly();
-        }
-        
-        clearMarkers() {
-            if (this.markers.length > 0) {
-                this.map.remove(this.markers);
-                this.markers = [];
-            }
-        }
-        
-        filterMarkers(status) {
-            this.currentFilter = status;
-            this.loadMarkers();
-        }
-        
-        fitView() {
-            if (this.markers.length > 0) {
-                this.map.setFitView(this.markers);
-                
-                // 限制最大缩放级别，避免过度放大
-                setTimeout(() => {
-                    const currentZoom = this.map.getZoom();
-                    const maxZoom = 6; // 设置最大缩放级别为6，避免过度精细
-                    if (currentZoom > maxZoom) {
-                        this.map.setZoom(maxZoom);
-                    }
-                }, 100);
-            }
-        }
-        
-        resetView() {
-            if (this.map) {
-                this.map.setCenter(this.options.center);
-                this.map.setZoom(this.options.zoom);
-            }
-        }
-        
+
         zoomIn() {
-            if (this.map) {
-                const currentZoom = this.map.getZoom();
-                this.map.setZoom(currentZoom + 1);
-            }
+            if (this.map) this.map.setZoom(this.map.getZoom() + 1);
         }
-        
+
         zoomOut() {
-            if (this.map) {
-                const currentZoom = this.map.getZoom();
-                this.map.setZoom(Math.max(currentZoom - 1, 1)); // 最小缩放级别为1
-            }
+            if (this.map) this.map.setZoom(Math.max(this.map.getZoom() - 1, this.options.minZoom));
         }
-        
-        toggleFullscreen() {
-            const element = this.container;
-            
-            if (!document.fullscreenElement) {
-                element.requestFullscreen();
-            } else {
-                document.exitFullscreen();
-            }
+
+        supportsFullscreen() {
+            const el = this.container;
+            if (!el) return false;
+            const hasApi = !!(el.requestFullscreen || el.webkitRequestFullscreen);
+            const enabled = document.fullscreenEnabled || document.webkitFullscreenEnabled;
+            return hasApi && !!enabled;
         }
-        
-        hideLoading() {
-            // 先在地图容器中查找
-            let loading = this.mapContainer ? this.mapContainer.querySelector('.travel-map-loading') : null;
-            
-            // 如果没有找到，在整个文档中查找
-            if (!loading) {
-                loading = document.querySelector('.travel-map-loading');
-            }
-            
-            if (loading) {
-                loading.style.display = 'none';
-            }
-        }
-        
-        showError(message) {
-            
-            // 在地图容器中查找 wrapper
-            let wrapper = this.mapContainer ? this.mapContainer.querySelector('.travel-map-wrapper') : null;
-            
-            // 如果没有找到，在整个文档中查找
-            if (!wrapper) {
-                wrapper = document.querySelector('.travel-map-wrapper');
-            }
-            
-            if (!wrapper) {
+
+        setupFullscreenControl() {
+            const container = this.mapContainer || this.container;
+            const btn = container ? container.querySelector('.travel-map-control-btn[data-action="fullscreen"]') : null;
+            if (!btn) return;
+
+            if (!this.supportsFullscreen()) {
+                btn.style.display = 'none';
+                btn.setAttribute('hidden', 'hidden');
                 return;
             }
-            
+
+            if (!this._fullscreenChangeHandler) {
+                this._fullscreenChangeHandler = () => {
+                    const active = document.fullscreenElement || document.webkitFullscreenElement;
+                    btn.setAttribute('aria-pressed', active === this.container ? 'true' : 'false');
+                    if (this.map) {
+                        window.setTimeout(() => this.refreshMapSize(), 100);
+                    }
+                };
+                document.addEventListener('fullscreenchange', this._fullscreenChangeHandler);
+                document.addEventListener('webkitfullscreenchange', this._fullscreenChangeHandler);
+            }
+        }
+
+        toggleFullscreen() {
+            const el = this.container;
+            if (!this.supportsFullscreen()) return;
+
+            const current = document.fullscreenElement || document.webkitFullscreenElement;
+            if (!current) {
+                const request = el.requestFullscreen || el.webkitRequestFullscreen;
+                if (request) {
+                    const result = request.call(el);
+                    if (result && typeof result.catch === 'function') result.catch(() => {});
+                }
+            } else {
+                const exit = document.exitFullscreen || document.webkitExitFullscreen;
+                if (exit) {
+                    const result = exit.call(document);
+                    if (result && typeof result.catch === 'function') result.catch(() => {});
+                }
+            }
+        }
+
+        hideLoading() {
+            let loading = this.mapContainer ? this.mapContainer.querySelector('.travel-map-loading') : null;
+            if (!loading) loading = document.querySelector('.travel-map-loading');
+            if (loading) loading.style.display = 'none';
+        }
+
+        showError(message) {
+            let wrapper = this.mapContainer ? this.mapContainer.querySelector('.travel-map-wrapper') : null;
+            if (!wrapper) wrapper = document.querySelector('.travel-map-wrapper');
+            if (!wrapper) return;
+
             const safeMessage = escapeHtml(message);
-            const errorHtml = `
+            wrapper.innerHTML = `
                 <div class="travel-map-error">
                     <div class="travel-map-error-icon">⚠️</div>
                     <div class="travel-map-error-message">${safeMessage}</div>
@@ -1482,199 +1402,127 @@
                     </div>
                 </div>
             `;
-            
-            wrapper.innerHTML = errorHtml;
         }
-        
-        ensureMapSize() {
-            const mapElement = document.getElementById(this.mapId);
-            const wrapperElement = mapElement?.closest('.travel-map-wrapper');
-            const containerElement = mapElement?.closest('.travel-map-container');
-                    
-            if (mapElement && wrapperElement && containerElement) {
-                // 移动端响应式调整 - 使用竖型显示
-                const isMobile = window.innerWidth <= 768;
-                const isSmallMobile = window.innerWidth <= 480;
-                const containerWidth = containerElement.offsetWidth;
-                        
-                // 根据容器实际宽度计算目标高度（与 CSS 保持一致）
-                let targetHeight;
-                if (isSmallMobile) {
-                    // 小屏幕使用竖型显示：高度 = 宽度 × 1.5
-                    targetHeight = Math.round(containerWidth * 1.5) + 'px';
-                } else if (isMobile) {
-                    // 平板和移动设备使用竖型显示：高度 = 宽度 × 1.3
-                    targetHeight = Math.round(containerWidth * 1.3) + 'px';
-                } else {
-                    // 桌面设备使用默认高度或容器设置的高度
-                    const containerStyle = window.getComputedStyle(containerElement);
-                    targetHeight = containerStyle.height;
-                    if (targetHeight === 'auto' || targetHeight === '0px') {
-                        targetHeight = '500px';
-                    }
-                }
-                        
-                // 确保包装器和地图元素有正确的高度
-                wrapperElement.style.height = targetHeight;
-                mapElement.style.height = targetHeight;
-                        
-                // 检查 CSS 计算结果
-                const computedStyle = window.getComputedStyle(mapElement);
-                const currentHeight = computedStyle.height;
-                        
-                // 如果高度仍然不正确，强制设置
-                if (currentHeight === '0px' || currentHeight === 'auto' || parseInt(currentHeight) < 300) {
-                    const fallbackHeight = isMobile ? Math.round(containerWidth * (isSmallMobile ? 1.5 : 1.3)) + 'px' : '500px';
-                    mapElement.style.height = fallbackHeight;
-                    wrapperElement.style.height = fallbackHeight;
-                }
-                        
-                // 通知地图更新尺寸
-                if (this.map) {
-                    setTimeout(() => {
-                        this.map.getSize();
-                        // 最终检查
-                        if (mapElement.offsetHeight < 300) {
-                            const finalHeight = isMobile ? Math.round(containerWidth * (isSmallMobile ? 1.5 : 1.3)) + 'px' : '500px';
-                            mapElement.style.height = finalHeight;
-                            wrapperElement.style.height = finalHeight;
-                            this.map.getSize();
-                        }
-                    }, 50);
-                }
-            }
-        }
-        
+
         /**
-         * 检测当前主题模式
+         * 通知地图重算尺寸
+         *
+         * ResizeObserver 会在首次 observe 时立即回调，此时 AMap 内部视图尚未建立，
+         * 直接调 getSize() 会抛 "Cannot read properties of undefined (reading 'getStatus')"。
+         * 因此以 complete 事件置位的 _mapReady 为门槛，并兜住地图销毁等边界情况。
          */
+        refreshMapSize() {
+            // 容器宽度与地图就绪无关，先同步弹窗宽度上限
+            this.syncPopupMaxWidth();
+            if (!this.map || !this._mapReady) return;
+            try {
+                this.map.getSize();
+            } catch (e) {}
+        }
+
+        observeContainerSize() {
+            if (typeof ResizeObserver === 'undefined') return;
+            const target = this.mapContainer || this.container;
+            if (!target) return;
+
+            this._resizeObserver = new ResizeObserver(() => {
+                if (this._roTimer) window.clearTimeout(this._roTimer);
+                this._roTimer = window.setTimeout(() => {
+                    this._roTimer = null;
+                    this.refreshMapSize();
+                }, 120);
+            });
+            this._resizeObserver.observe(target);
+        }
+
         detectThemeMode() {
             const html = document.documentElement;
-            if (html.classList.contains('dark')) {
-                return 'dark';
-            } else if (html.classList.contains('light')) {
-                return 'light';
-            } else if (html.classList.contains('auto')) {
-                // auto模式跟随系统主题
-                if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                    return 'dark';
-                } else {
-                    return 'light';
-                }
-            }
-            // 如果没有明确的class，尝试检测系统主题
-            else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            if (html.classList.contains('dark')) return 'dark';
+            if (html.classList.contains('light')) return 'light';
+            if (html.classList.contains('auto')
+                && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
                 return 'dark';
             }
-            return 'light'; // 默认浅色
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                return 'dark';
+            }
+            return 'light';
         }
-        
-        /**
-         * 根据主题模式获取地图样式
-         */
+
         getMapStyleByTheme(themeMode = null) {
-            const currentTheme = themeMode || this.detectThemeMode();
-            
-            // 根据主题自动选择地图样式
-            if (currentTheme === 'dark') {
-                return 'amap://styles/dark';
-            } else {
-                return 'amap://styles/light';
-            }
+            return (themeMode || this.detectThemeMode()) === 'dark'
+                ? 'amap://styles/dark'
+                : 'amap://styles/light';
         }
-        
-        /**
-         * 初始化主题监听器
-         */
+
         initThemeObserver() {
+            // 'complete' 事件在某些路径下可能触发多次，重复绑定会让同一次
+            // 主题切换重复调用 setMapStyle。
+            if (this._themeObserverBound) return;
+            this._themeObserverBound = true;
+
             const html = document.documentElement;
-            
-            // 使用MutationObserver监听主题变化
             this.themeObserver = new MutationObserver((mutations) => {
                 mutations.forEach((mutation) => {
                     if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-                        const newTheme = this.detectThemeMode();
-                        this.updateMapTheme(newTheme);
+                        this.syncMapTheme();
                     }
                 });
             });
-            
-            // 开始监听
-            this.themeObserver.observe(html, {
-                attributes: true,
-                attributeFilter: ['class']
-            });
-            
-            // 也监听系统主题变化
+            this.themeObserver.observe(html, { attributes: true, attributeFilter: ['class'] });
+
             if (window.matchMedia) {
-                const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-                const handleSystemThemeChange = () => {
-                    // 只有在auto模式或没有明确主题class时才响应系统主题
-                    if (html.classList.contains('auto') || 
-                        (!html.classList.contains('dark') && !html.classList.contains('light'))) {
-                        const newTheme = this.detectThemeMode();
-                        this.updateMapTheme(newTheme);
+                // 必须把 MediaQueryList 挂到实例上持久持有：WebKit 会回收没有强引用的
+                // MediaQueryList，连带静默丢掉它的 change 监听（Chromium 不会）。
+                // 原来它是局部 const，函数返回后即可被回收，Safari 下跟随系统深浅色因此失效。
+                this._themeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+                this._themeMediaHandler = () => {
+                    if (html.classList.contains('auto')
+                        || (!html.classList.contains('dark') && !html.classList.contains('light'))) {
+                        this.syncMapTheme();
                     }
                 };
-                
-                // 绑定系统主题变化事件
-                if (mediaQuery.addEventListener) {
-                    mediaQuery.addEventListener('change', handleSystemThemeChange);
-                } else {
-                    // 兼容老版本浏览器
-                    mediaQuery.addListener(handleSystemThemeChange);
-                }
+                const mq = this._themeMediaQuery;
+                if (mq.addEventListener) mq.addEventListener('change', this._themeMediaHandler);
+                else mq.addListener(this._themeMediaHandler);
             }
+
+            // 兜底对齐：Safari 在标签页不可见、窗口失焦或 bfcache 恢复期间可能不投递
+            // prefers-color-scheme 的 change 事件，回到前台后主题会永久停在旧值。
+            // 用户切换 macOS 外观必然经过「窗口失焦 → 回焦」，focus 是最可靠的补救点。
+            this._themeResyncHandler = () => {
+                if (document.visibilityState === 'hidden') return;
+                this.syncMapTheme();
+            };
+            document.addEventListener('visibilitychange', this._themeResyncHandler);
+            window.addEventListener('pageshow', this._themeResyncHandler);
+            window.addEventListener('focus', this._themeResyncHandler);
         }
-        
-        /**
-         * 确保嵌入式筛选标签存在
-         */
-        ensureEmbeddedFiltersExist() {
-            if (!this.options.showFilterTabs) {
-                return;
-            }
-            
-            const existingFilters = this.mapContainer.querySelector('.travel-map-embedded-filters');
-            if (!existingFilters) {
-                this.addEmbeddedFiltersToExisting();
-            } else {
-                // 确保可见
-                existingFilters.style.display = 'flex';
-                existingFilters.style.visibility = 'visible';
-                existingFilters.style.opacity = '1';
-                
-                // 更新激活状态
-                this.updateFilterTabsActiveState(existingFilters.parentElement);
-            }
+
+        // 只在检测结果与已生效值不同时才真正切样式，避免重复 setMapStyle。
+        syncMapTheme() {
+            const themeMode = this.detectThemeMode();
+            if (themeMode === this._appliedThemeMode) return;
+            this.updateMapTheme(themeMode);
         }
-        
-        /**
-         * 更新地图主题
-         */
+
         updateMapTheme(themeMode) {
-            if (this.map) {
-                const newMapStyle = this.getMapStyleByTheme(themeMode);
-                this.map.setMapStyle(newMapStyle);
-            }
+            if (!this.map) return;
+            this._appliedThemeMode = themeMode;
+            this.map.setMapStyle(this.getMapStyleByTheme(themeMode));
         }
-        
+
         generateMapId() {
             return `travel-map-${Math.random().toString(36).substr(2, 9)}`;
         }
-        
+
         getMapId() {
             return this.mapId;
         }
-        
-
     }
 
-    // 全局函数，供短代码调用
+    // 全局函数，供短代码调用（契约不变）
     window.initTravelMap = function(container, options) {
         return new TravelMap(container, options);
     };
-    
-    // 暂时移除jQuery插件形式，直到确保没有jQuery依赖问题
-
 })();

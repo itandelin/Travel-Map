@@ -53,9 +53,9 @@ $can_delete = current_user_can('delete_posts');
                     <label for="status-filter"><?php _e('筛选状态', TRAVEL_MAP_TEXT_DOMAIN); ?></label>
                     <select id="status-filter" class="travel-map-select">
                         <option value="all"><?php _e('所有状态', TRAVEL_MAP_TEXT_DOMAIN); ?></option>
-                        <option value="visited"><?php _e('已去', TRAVEL_MAP_TEXT_DOMAIN); ?></option>
-                        <option value="want_to_go"><?php _e('想去', TRAVEL_MAP_TEXT_DOMAIN); ?></option>
-                        <option value="planned"><?php _e('计划', TRAVEL_MAP_TEXT_DOMAIN); ?></option>
+                        <option value="done"><?php _e('已去', TRAVEL_MAP_TEXT_DOMAIN); ?></option>
+                        <option value="wish"><?php _e('想去', TRAVEL_MAP_TEXT_DOMAIN); ?></option>
+                        <option value="plan"><?php _e('计划', TRAVEL_MAP_TEXT_DOMAIN); ?></option>
                     </select>
                 </div>
                 
@@ -77,6 +77,7 @@ $can_delete = current_user_can('delete_posts');
                             <?php endif; ?>
                             <th class="travel-map-th-name"><?php _e('地点名称', TRAVEL_MAP_TEXT_DOMAIN); ?></th>
                             <th class="travel-map-th-status"><?php _e('状态', TRAVEL_MAP_TEXT_DOMAIN); ?></th>
+                            <th class="travel-map-th-country"><?php _e('国别', TRAVEL_MAP_TEXT_DOMAIN); ?></th>
                             <th class="travel-map-th-coords"><?php _e('坐标', TRAVEL_MAP_TEXT_DOMAIN); ?></th>
                             <th class="travel-map-th-post"><?php _e('关联文章', TRAVEL_MAP_TEXT_DOMAIN); ?></th>
                             <th class="travel-map-th-date"><?php _e('创建时间', TRAVEL_MAP_TEXT_DOMAIN); ?></th>
@@ -88,7 +89,7 @@ $can_delete = current_user_can('delete_posts');
                     <tbody id="coordinates-tbody">
                         <!-- 数据通过 AJAX 加载 -->
                         <tr>
-                            <td colspan="<?php echo $can_edit ? '7' : '6'; ?>" class="travel-map-loading-row">
+                            <td colspan="<?php echo $can_edit ? '8' : '7'; ?>" class="travel-map-loading-row">
                                 <div class="travel-map-loading">
                                     <span class="travel-map-spinner"></span>
                                     加载中...
@@ -99,15 +100,14 @@ $can_delete = current_user_can('delete_posts');
                 </table>
             </div>
 
-            <!-- 分页区域 -->
-            <div class="travel-map-pagination">
-                <div class="travel-map-pagination-info">
-                    <span id="pagination-info"></span>
-                </div>
-                <div class="travel-map-pagination-controls" id="pagination-controls">
-                    <!-- 分页按钮将在这里生成 -->
-                </div>
-            </div>
+            <?php
+            /**
+             * 此处原有一块分页 DOM（travel-map-pagination），但没有任何 CSS 与 JS 实现，
+             * 列表实际一次性渲染全部地点，分页区域永远是空的。已移除以免误导。
+             * 地点总数显示在列表顶部的 #markers-count。
+             * 若将来数据量需要分页，应同时实现后端 limit/offset 与前端控件。
+             */
+            ?>
         </div>
 
         <!-- 右侧添加/编辑区域 -->
@@ -179,16 +179,55 @@ $can_delete = current_user_can('delete_posts');
                                         <?php _e('旅行状态', TRAVEL_MAP_TEXT_DOMAIN); ?>
                                     </label>
                                     <select id="marker-status" name="status" class="travel-map-select">
-                                        <option value="visited"><?php _e('已去', TRAVEL_MAP_TEXT_DOMAIN); ?></option>
-                                        <option value="want_to_go"><?php _e('想去', TRAVEL_MAP_TEXT_DOMAIN); ?></option>
-                                        <option value="planned"><?php _e('计划', TRAVEL_MAP_TEXT_DOMAIN); ?></option>
+                                        <option value="done"><?php _e('已去', TRAVEL_MAP_TEXT_DOMAIN); ?></option>
+                                        <option value="wish"><?php _e('想去', TRAVEL_MAP_TEXT_DOMAIN); ?></option>
+                                        <option value="plan"><?php _e('计划', TRAVEL_MAP_TEXT_DOMAIN); ?></option>
                                     </select>
                                 </div>
                                 <div class="travel-map-form-field">
-                                    <label for="marker-color" class="travel-map-label">
-                                        <?php _e('标记颜色', TRAVEL_MAP_TEXT_DOMAIN); ?>
+                                    <label for="marker-country" class="travel-map-label">
+                                        <?php _e('国别 (ISO 代码)', TRAVEL_MAP_TEXT_DOMAIN); ?>
                                     </label>
-                                    <input type="color" id="marker-color" name="marker_color" class="travel-map-color-input" value="#FF6B35">
+                                    <input type="text" id="marker-country" name="country" class="travel-map-input" placeholder="CN 或 CN,HK" autocomplete="off">
+                                    <p class="description" style="margin:4px 0 0;font-size:12px;color:#666;">
+                                        <?php _e('两位/三位 ISO 代码，多国逗号分隔；用于国旗与国家高亮', TRAVEL_MAP_TEXT_DOMAIN); ?>
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="travel-map-form-row travel-map-row-split">
+                                <div class="travel-map-form-field">
+                                    <label for="marker-years" class="travel-map-label">
+                                        <?php _e('到访年份', TRAVEL_MAP_TEXT_DOMAIN); ?>
+                                    </label>
+                                    <input type="text" id="marker-years" name="years" class="travel-map-input" placeholder="2015,2016" autocomplete="off">
+                                    <p class="description" style="margin:4px 0 0;font-size:12px;color:#666;">
+                                        <?php _e('多个年份逗号分隔，支持多次到访', TRAVEL_MAP_TEXT_DOMAIN); ?>
+                                    </p>
+                                </div>
+                                <div class="travel-map-form-field">
+                                    <label for="marker-type" class="travel-map-label">
+                                        <?php _e('分类', TRAVEL_MAP_TEXT_DOMAIN); ?>
+                                    </label>
+                                    <input type="text" id="marker-type" name="type" class="travel-map-input" placeholder="whc / 自定义" autocomplete="off">
+                                </div>
+                            </div>
+
+                            <div class="travel-map-form-row">
+                                <div class="travel-map-form-field">
+                                    <label for="marker-cover" class="travel-map-label">
+                                        <?php _e('封面图', TRAVEL_MAP_TEXT_DOMAIN); ?>
+                                    </label>
+                                    <div style="display:flex;gap:8px;align-items:center;">
+                                        <input type="url" id="marker-cover" name="cover_image" class="travel-map-input" placeholder="https://…/cover.jpg" style="flex:1;">
+                                        <button type="button" id="select-cover-btn" class="travel-map-btn travel-map-btn-outline">
+                                            <span class="dashicons dashicons-format-image"></span>
+                                            <?php _e('媒体库', TRAVEL_MAP_TEXT_DOMAIN); ?>
+                                        </button>
+                                    </div>
+                                    <p class="description" style="margin:4px 0 0;font-size:12px;color:#666;">
+                                        <?php _e('留空时前台自动使用关联文章的特色图', TRAVEL_MAP_TEXT_DOMAIN); ?>
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -229,6 +268,9 @@ $can_delete = current_user_can('delete_posts');
                                         <?php _e('访问日期', TRAVEL_MAP_TEXT_DOMAIN); ?>
                                     </label>
                                     <input type="date" id="marker-visit-date" name="visit_date" class="travel-map-input">
+                                    <p class="description" style="margin:4px 0 0;font-size:12px;color:#666;">
+                                        <?php _e('未填写到访年份时，以此日期推导年份', TRAVEL_MAP_TEXT_DOMAIN); ?>
+                                    </p>
                                 </div>
                             </div>
 
@@ -306,6 +348,13 @@ $can_delete = current_user_can('delete_posts');
                     <label for="import-file"><?php _e('选择文件', TRAVEL_MAP_TEXT_DOMAIN); ?></label>
                     <input type="file" id="import-file" name="import_file" accept=".csv,.json,.geojson" required>
                     <p class="description"><?php _e('支持 CSV, JSON, GeoJSON 格式', TRAVEL_MAP_TEXT_DOMAIN); ?></p>
+                </div>
+                <div class="travel-map-form-row">
+                    <label class="travel-map-form-checkbox" style="display:flex;align-items:center;gap:6px;">
+                        <input type="checkbox" id="import-wgs84" value="1">
+                        <span><?php _e('WGS-84 坐标纠偏', TRAVEL_MAP_TEXT_DOMAIN); ?></span>
+                    </label>
+                    <p class="description"><?php _e('数据来自 Google Maps 等国际地图（WGS-84）时勾选：境内坐标将自动转换为高德坐标系（GCJ-02），海外坐标保持不变。默认关闭。', TRAVEL_MAP_TEXT_DOMAIN); ?></p>
                 </div>
                 <div class="travel-map-form-actions">
                     <button type="submit" class="button-primary"><?php _e('导入', TRAVEL_MAP_TEXT_DOMAIN); ?></button>
