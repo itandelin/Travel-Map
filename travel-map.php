@@ -39,6 +39,10 @@ class TravelMapPlugin {
     private static $instance = null;
     private static $frontend_scripts_loaded = false;
     private static $markers_cache_cleared = false;
+    // 后台页面 hook 名由 WordPress 依据菜单标题生成，中文标题会被 URL 编码，
+    // 不能写死字符串，需保存 add_menu_page/add_submenu_page 的返回值
+    private $settings_page_hooks = array();
+    private $markers_page_hook = '';
     
     /**
      * 获取插件实例（单例模式）
@@ -400,7 +404,7 @@ class TravelMapPlugin {
      */
     public function admin_menu() {
         // 主菜单页面
-        add_menu_page(
+        $this->settings_page_hooks[] = add_menu_page(
             __('地图', TRAVEL_MAP_TEXT_DOMAIN),
             __('地图', TRAVEL_MAP_TEXT_DOMAIN),
             'manage_options',
@@ -411,7 +415,7 @@ class TravelMapPlugin {
         );
         
         // 设置子页面
-        add_submenu_page(
+        $this->settings_page_hooks[] = add_submenu_page(
             'travel-map',
             __('地图设置', TRAVEL_MAP_TEXT_DOMAIN),
             __('地图设置', TRAVEL_MAP_TEXT_DOMAIN),
@@ -421,7 +425,7 @@ class TravelMapPlugin {
         );
         
         // 坐标管理子页面
-        add_submenu_page(
+        $this->markers_page_hook = add_submenu_page(
             'travel-map',
             __('坐标管理', TRAVEL_MAP_TEXT_DOMAIN),
             __('坐标管理', TRAVEL_MAP_TEXT_DOMAIN),
@@ -622,12 +626,11 @@ class TravelMapPlugin {
      */
     public function enqueue_admin_scripts($hook) {
         // 只在插件页面加载
-        if (strpos($hook, 'travel-map') === false) {
+        $is_settings_page = in_array($hook, $this->settings_page_hooks, true);
+        $is_markers_page = ($hook !== '' && $hook === $this->markers_page_hook);
+        if (!$is_settings_page && !$is_markers_page) {
             return;
         }
-        
-        $is_settings_page = ($hook === 'toplevel_page_travel-map' || $hook === 'travel-map_page_travel-map');
-        $is_markers_page = ($hook === 'travel-map_page_travel-map-markers');
         
         $api_key = get_option('travel_map_api_key', '');
         $security_key = get_option('travel_map_security_key', '');
