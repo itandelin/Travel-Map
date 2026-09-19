@@ -1049,6 +1049,7 @@ class TravelMapPlugin {
                     'image'   => $images,
                     'posts'   => $posts,
                     'year'    => $years,
+                    'description' => isset($marker->description) ? (string) $marker->description : '',
                     'plan_date'   => isset($marker->planned_date) ? (string) $marker->planned_date : '',
                     'wish_reason' => isset($marker->wish_reason) ? (string) $marker->wish_reason : '',
                 ),

@@ -209,6 +209,12 @@ html.dark .travel-map-control-btn svg {
     .marker:not(.no-hover):hover::before {
         opacity: 1;
     }
+
+    /* 聚合气泡不是照片标记，悬停只做受控放大（18→32px），
+       不跟随普通标记膨胀到 64px 的照片揭示尺寸。选择器 (0,3,1) 覆盖上面的 (0,2,1)。 */
+    .marker.cluster:hover {
+        --mark-size: 32px;
+    }
 }
 
 .marker.no-post {
@@ -256,7 +262,17 @@ html.dark .travel-map-control-btn svg {
 }
 
 .cluster:hover::after {
-    font-size: 32px;
+    font-size: 16px;
+}
+
+/* 聚合气泡颜色随当前筛选状态：done/全部用 .marker 基础橙红渐变，
+   wish/plan 覆盖为对应色（与单点同一色板）。 */
+.marker.cluster.cluster--wish {
+    background: linear-gradient(180deg, #f9c74f 0, #f9844a);
+}
+
+.marker.cluster.cluster--plan {
+    background: linear-gradient(180deg, #9b59b6 0, #8e44ad);
 }
 
 /* ============ 弹窗 ============ */
@@ -424,6 +440,14 @@ html.dark .travel-map-control-btn svg {
 .travel-map-popup .travel-map-popup-link a:focus {
     text-decoration: underline;
     color: var(--tm-hover-color);
+}
+
+/* 已去/计划标记无关联文章时的地点描述：保留用户换行，正常折行 */
+.travel-map-popup-desc {
+    padding: 3px 0;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
 }
 
 .travel-map-popup-years {

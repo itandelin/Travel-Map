@@ -540,10 +540,17 @@
         }
 
         renderClusterMarker(context) {
-            const count = Math.min(this.options.clusterLimit, context.count);
+            const n = context.count;
+            const limit = this.options.clusterLimit;
+            // 数字集合：≤ 上限显示真实数量，> 上限显示"9+"（封顶值+加号）
+            const label = n > limit ? limit + '+' : String(n);
+            // 气泡颜色随当前筛选状态：wish/plan 用对应色，"全部"与 done 归为橙色
+            const statusClass = (this.filterStatus === 'wish' || this.filterStatus === 'plan')
+                ? this.filterStatus : 'done';
+
             const el = document.createElement('div');
-            el.className = 'marker cluster';
-            el.setAttribute('data-cardinality', count);
+            el.className = 'marker cluster cluster--' + statusClass;
+            el.setAttribute('data-cardinality', label);
             el.setAttribute('role', 'img');
             el.setAttribute('aria-label', 'Map marker');
             context.marker.setContent(el);
@@ -613,6 +620,9 @@
             const flagUrl = firstCode && this.options.flagsBase
                 ? safeUrl(this.options.flagsBase + firstCode.toLowerCase() + '.svg') : '';
 
+            // 地点描述：已去/计划标记在无关联文章时作为兜底内容展示
+            const description = String(p.description || '').trim();
+
             let contentHtml = '';
             if (posts.length > 0) {
                 contentHtml = posts.map(post => {
@@ -622,6 +632,8 @@
                     const title = escapeHtml(post.title);
                     return `<div class="travel-map-popup-link"><a target="_blank" href="${href}" title="${title}">${title}</a></div>`;
                 }).join('');
+            } else if (description && (p.status === 'done' || p.status === 'plan')) {
+                contentHtml = `<div class="travel-map-popup-desc">${escapeHtml(description)}</div>`;
             } else if (p.status === 'plan') {
                 contentHtml = `<div class="travel-map-popup-note">计划日期：${escapeHtml(p.plan_date || '未定')}</div>`;
             } else if (p.status === 'wish') {
@@ -956,7 +968,8 @@
                 if (allSame) {
                     this.map.setZoomAndCenter(Math.max(this.map.getZoom(), 10), first);
                 } else {
-                    this.fitToCoords(coords, { padding: this.overviewPadding(), centering: 'centroid' });
+                    // 总览/筛选：贴合后再多退一档，确保边缘标记不被裁到视口外
+                    this.fitToCoords(coords, { padding: this.overviewPadding(), centering: 'centroid', zoomOut: 1 });
                 }
             }
         }
@@ -1006,7 +1019,15 @@
                 viewH: viewH
             });
             if (!r) return;
-            this.map.setZoomAndCenter(r.zoom, r.center);
+
+            // 可选的安全余量：在算好的贴合缩放基础上再缩小若干档（每档面积翻倍），
+            // 让外接框周围容纳更大区域，避免边缘标记因容器尺寸抖动/标记锚点偏移而落到视口外。
+            // 中心点不变，只放宽视野，质心居中效果保持。
+            const zoomOut = opts.zoomOut || 0;
+            const zoom = zoomOut > 0
+                ? Math.max(this.options.minZoom, r.zoom - zoomOut)
+                : r.zoom;
+            this.map.setZoomAndCenter(zoom, r.center);
         }
 
         backToOverview() {
