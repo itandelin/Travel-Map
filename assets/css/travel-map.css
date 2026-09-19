@@ -613,7 +613,12 @@ html.dark .travel-map-filter-tab.active {
 .travel-map-year-panel {
     left: 10px;
     right: auto;
-    max-width: 150px;
+    /* 内容盒 = max-width − 左右内距(2×10px)。原值 150px 时内容盒仅 130px，
+       恰好卡在「两个年份 chip 能否并排」的临界：贪心 flex-wrap 下，宽度相近的
+       chip 对会因亚像素取整一对挤进首行、另一对被拆到不同行，导致 4 个年份渲染成
+       3 行。放宽到 180px（内容盒 160px）为双列留出稳定余量，即便计数/国家数进位到
+       两位也能保持每行 2 个 chip。gap 仍走共享规则，不影响右下类型统计面板。 */
+    max-width: 180px;
     flex-wrap: wrap;
 }
 
