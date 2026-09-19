@@ -999,18 +999,24 @@ class TravelMapPlugin {
             }
 
             // 年份数组：years 字段优先，回退 visit_date 年份
+            // 与前端 updateStatsPanels 保持同一份白名单：严格 4 位数字，且排除 MySQL
+            // 零值日期 `0000-00-00` 派生出的 '0000'，避免脏值穿透到年份统计面板。
             $years = array();
             if (!empty($marker->years)) {
                 foreach (explode(',', $marker->years) as $y) {
                     $y = trim($y);
-                    if (preg_match('/^\d{4}$/', $y)) {
+                    if ($y !== '0000' && preg_match('/^\d{4}$/', $y)) {
                         $years[] = $y;
                     }
                 }
             }
             if (empty($years) && !empty($marker->visit_date)) {
-                $years[] = substr($marker->visit_date, 0, 4);
+                $candidate = substr((string) $marker->visit_date, 0, 4);
+                if ($candidate !== '0000' && preg_match('/^\d{4}$/', $candidate)) {
+                    $years[] = $candidate;
+                }
             }
+            $years = array_values(array_unique($years));
 
             $features[] = array(
                 'type' => 'Feature',

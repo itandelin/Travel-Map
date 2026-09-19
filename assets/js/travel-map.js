@@ -1136,31 +1136,32 @@
             if (this.yearStatsEl) {
                 const yearCounts = {};
                 const yearCountries = {};
+                // 年份面板语义 = 「每年到访多少地点」，只统计有合法 4 位年份的标记；
+                // wish/plan 状态或缺 years 且无 visit_date 的 done 标记，直接跳过，
+                // 不再归入「未知」桶（否则默认「全部」筛选下总会出现一格「未知」，
+                // 让用户误以为统计不准）。后端 properties.year 已是字符串数组，
+                // 这里再做一次白名单过滤，防止 0000/空串等历史脏值穿透。
                 for (const f of this.currentFeatures) {
                     const p = f.properties || {};
-                    const years = Array.isArray(p.year) ? p.year : [];
+                    const rawYears = Array.isArray(p.year) ? p.year : [];
+                    const validYears = rawYears
+                        .map(y => (y === null || y === undefined) ? '' : String(y).trim())
+                        .filter(y => /^\d{4}$/.test(y) && y !== '0000');
+                    if (!validYears.length) continue;
+
                     const countryTokens = String(p.country || '').toUpperCase()
                         .split(/[,，\s]+/).filter(Boolean);
 
-                    if (!years.length) {
-                        yearCounts['未知'] = (yearCounts['未知'] || 0) + 1;
-                        if (!yearCountries['未知']) yearCountries['未知'] = new Set();
-                        countryTokens.forEach(c => yearCountries['未知'].add(c));
-                    } else {
-                        for (const y of years) {
-                            const key = y && String(y).trim() ? String(y) : '未知';
-                            yearCounts[key] = (yearCounts[key] || 0) + 1;
-                            if (!yearCountries[key]) yearCountries[key] = new Set();
-                            countryTokens.forEach(c => yearCountries[key].add(c));
-                        }
+                    for (const y of validYears) {
+                        yearCounts[y] = (yearCounts[y] || 0) + 1;
+                        if (!yearCountries[y]) yearCountries[y] = new Set();
+                        countryTokens.forEach(c => yearCountries[y].add(c));
                     }
                 }
 
-                const keys = Object.keys(yearCounts).sort((a, b) => {
-                    if (a === '未知') return 1;
-                    if (b === '未知') return -1;
-                    return parseInt(b, 10) - parseInt(a, 10);
-                });
+                const keys = Object.keys(yearCounts).sort(
+                    (a, b) => parseInt(b, 10) - parseInt(a, 10)
+                );
 
                 this.yearStatsEl.innerHTML = keys.map(k => {
                     const countryCount = yearCountries[k] ? yearCountries[k].size : 0;
