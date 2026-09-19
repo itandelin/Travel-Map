@@ -168,6 +168,11 @@
         if (!window.AMap && apiScriptUrl) {
             tasks.push(loadScript(apiScriptUrl, { 'data-travel-map': 'amap' }));
         }
+        // 视野自适应纯计算模块：travel-map.js 运行时依赖 window.TravelMapGeo，
+        // 动态注入路径下必须一并加载（fitToCoords 在数据返回后才调用，时序安全）。
+        if (!window.TravelMapGeo && cfg.geoScript) {
+            tasks.push(loadScript(cfg.geoScript, { 'data-travel-map': 'geo' }));
+        }
         if (typeof window.initTravelMap !== 'function' && frontendScriptUrl) {
             tasks.push(loadScript(frontendScriptUrl, { 'data-travel-map': 'frontend' }));
         }

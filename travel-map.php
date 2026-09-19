@@ -567,6 +567,16 @@ class TravelMapPlugin {
             $script_dependencies[] = 'amap-api';
         }
         
+        // 视野自适应纯计算模块（不依赖 API Key，始终加载，且必须先于 travel-map.js）
+        wp_enqueue_script(
+            'travel-map-geo',
+            TRAVEL_MAP_PLUGIN_URL . 'assets/js/travel-map-geo.js',
+            array(),
+            $this->get_asset_version('assets/js/travel-map-geo.js'),
+            true
+        );
+        $script_dependencies[] = 'travel-map-geo';
+
         // 加载插件脚本（无jQuery依赖）
         wp_enqueue_script(
             'travel-map-frontend',
@@ -633,6 +643,7 @@ class TravelMapPlugin {
         wp_localize_script('travel-map-shortcode-init', 'travelMapShortcode', array(
             'apiScript' => $api_script_url,
             'frontendScript' => TRAVEL_MAP_PLUGIN_URL . 'assets/js/travel-map.js',
+            'geoScript' => TRAVEL_MAP_PLUGIN_URL . 'assets/js/travel-map-geo.js',
             'styleUrl' => $style_url,
             'securityKey' => $security_key,
             'i18n' => array(
@@ -811,6 +822,9 @@ class TravelMapPlugin {
                 if (!empty(get_option('travel_map_api_key', ''))) {
                     $handles[] = 'amap-api';
                 }
+                // wp_print_scripts 传数组时逐项 do_item，不会自动带上依赖，
+                // 故必须显式列出 travel-map-geo，且先于 travel-map-frontend。
+                $handles[] = 'travel-map-geo';
                 $handles[] = 'travel-map-frontend';
                 $handles[] = 'travel-map-shortcode-init';
                 wp_print_scripts($handles);
