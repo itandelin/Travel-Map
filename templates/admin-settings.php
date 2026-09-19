@@ -105,7 +105,7 @@ if (!defined('ABSPATH')) {
                     placeholder="<?php _e('纬度,经度 (例如: 35.0,105.0)', TRAVEL_MAP_TEXT_DOMAIN); ?>"
                 >
                 <p class="travel-map-form-help">
-                    <?php _e('格式：纬度,经度。默认为中国地理中心', TRAVEL_MAP_TEXT_DOMAIN); ?>
+                    <?php _e('格式：纬度,经度。默认为中国地理中心。注意：地图会优先自适应到当前筛选下的全部标记，此处的中心与缩放仅在所选筛选无任何标记时作为兜底视图。', TRAVEL_MAP_TEXT_DOMAIN); ?>
                 </p>
             </div>
         </div>
@@ -126,16 +126,6 @@ if (!defined('ABSPATH')) {
                 </label>
                 <p class="travel-map-form-help">
                     <?php _e('在地图上方显示"全部"、"已去"、"想去"、"计划"筛选标签（数量为 0 的状态自动隐藏）', TRAVEL_MAP_TEXT_DOMAIN); ?>
-                </p>
-            </div>
-            
-            <div class="travel-map-form-row">
-                <label class="travel-map-form-checkbox">
-                    <input type="checkbox" name="auto_zoom" value="1" <?php checked(get_option('travel_map_auto_zoom', true)); ?>>
-                    <span><?php _e('自适应缩放', TRAVEL_MAP_TEXT_DOMAIN); ?></span>
-                </label>
-                <p class="travel-map-form-help">
-                    <?php _e('开启后地图加载与筛选切换时自动调整视野包含全部标记点；关闭则固定使用默认中心与缩放', TRAVEL_MAP_TEXT_DOMAIN); ?>
                 </p>
             </div>
             

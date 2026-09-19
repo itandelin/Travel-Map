@@ -353,16 +353,11 @@
             });
         }
 
-        // 筛选切换的完整行为链（§2.6）：过滤 → 重建聚合 → fitToMarkers → 统计 → 国家高亮
+        // 筛选切换的完整行为链（§2.6）：过滤 → 重建聚合 → 自适应视野 → 统计 → 国家高亮
         applyFilterChain() {
             this.applyFilter();
             this.renderMarkers();
-            if (this.currentFeatures.length) {
-                this.fitToMarkers();
-            } else {
-                // 空结果：回初始中心（§2.6）
-                this.map.setZoomAndCenter(this.options.zoom, this.options.center);
-            }
+            this.frameCurrentView();
             this.updateStatsPanels();
             if (this.options.highlightCountry) {
                 this.highlightVisitedCountries();
@@ -481,11 +476,8 @@
             this.buildStatsPanels();
             this.updateStatsPanels();
 
-            if (this.options.autoZoom) {
-                this.fitToMarkers();
-            } else {
-                this.map.setZoomAndCenter(this.options.zoom, this.options.center);
-            }
+            // 优先展示缺省筛选下的标记；仅当该筛选无标记时才回退到后台中心/缩放。
+            this.frameCurrentView();
 
             if (this.options.highlightCountry) {
                 this.highlightVisitedCountries();
@@ -935,6 +927,20 @@
 
         // ============ 视野 ============
 
+        /**
+         * 以"当前筛选下是否有标记"统一决定视野（初次加载 / 筛选切换 / 返回重置共用）：
+         *   有标记 → fitToMarkers 自适应（质心 + 留白 + 缩放封顶）；
+         *   无标记 → 回退到后台「地图显示配置」的中心/缩放。
+         * 后台配置只作空结果兜底，不是强制锁定项。
+         */
+        frameCurrentView() {
+            if (this.currentFeatures && this.currentFeatures.length) {
+                this.fitToMarkers();
+            } else {
+                this.map.setZoomAndCenter(this.options.zoom, this.options.center);
+            }
+        }
+
         fitToMarkers() {
             const coords = this.currentFeatures
                 .map(f => f.geometry && f.geometry.coordinates)
@@ -1004,13 +1010,8 @@
         }
 
         backToOverview() {
-            if (!this.options.autoZoom) {
-                this.map.setZoomAndCenter(this.options.zoom, this.options.center);
-            } else if (this.currentFeatures.length) {
-                this.fitToMarkers();
-            } else {
-                this.map.setZoomAndCenter(this.options.zoom, this.options.center);
-            }
+            // 回到当前筛选的标记总览；无标记时回退后台中心/缩放（与加载/筛选一致的兜底）。
+            this.frameCurrentView();
         }
 
         // ============ 国家高亮（§2.8） ============
