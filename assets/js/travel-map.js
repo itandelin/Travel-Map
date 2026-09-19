@@ -943,7 +943,15 @@
             if (coords.length === 1) {
                 this.map.setZoomAndCenter(Math.max(this.map.getZoom(), 10), coords[0]);
             } else if (coords.length > 1) {
-                this.fitToCoords(coords, { padding: this.overviewPadding(), centering: 'centroid' });
+                // 全部点重合（重复录入/同城多点）：退化框交给质心会直冲 maxZoom，
+                // 这里与单点统一处理，保持"放大到就近一档"的观感。
+                const first = coords[0];
+                const allSame = coords.every(c => c[0] === first[0] && c[1] === first[1]);
+                if (allSame) {
+                    this.map.setZoomAndCenter(Math.max(this.map.getZoom(), 10), first);
+                } else {
+                    this.fitToCoords(coords, { padding: this.overviewPadding(), centering: 'centroid' });
+                }
             }
         }
 
