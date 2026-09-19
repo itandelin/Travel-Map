@@ -266,6 +266,30 @@ class TravelMapPlugin {
     }
 
     /**
+     * 判断当前是否处于「前台 HTML 渲染」上下文
+     *
+     * 区块编辑器保存页面时，核心会为新内容 PUT /wp/v2/pages/{id} 生成
+     * content.rendered 而重跑 the_content 滤镜（见
+     * class-wp-rest-posts-controller.php 的 prepare_response_for_display），
+     * 于是短代码会在 REST 请求里被执行一次。此类请求注意两点：
+     *   1. 不会走 wp-admin，is_admin() 为 false，不能拿它当判据；
+     *   2. 不触发 wp_enqueue_scripts / wp_head / wp_footer，
+     *      任何 wp_print_styles() / wp_print_scripts() 的直接输出都会抢在
+     *      JSON 响应之前落到响应流里，令编辑器报
+     *      「更新失败。此响应不是合法的 JSON 响应」，顺带泄露 API 密钥。
+     * 故以「wp_head 真的跑过」为主判据，再叠加后台/AJAX/REST 三重排除。
+     */
+    public static function is_frontend_html_render() {
+        if (is_admin() || wp_doing_ajax()) {
+            return false;
+        }
+        if (defined('REST_REQUEST') && REST_REQUEST) {
+            return false;
+        }
+        return did_action('wp_head') > 0;
+    }
+
+    /**
      * 前端脚本按需加载
      */
     public function maybe_enqueue_frontend_scripts() {
@@ -320,6 +344,11 @@ class TravelMapPlugin {
      * 检查内容中是否有短代码并提前加载脚本
      */
     public function check_shortcode_and_enqueue_scripts($content) {
+        // 非前台 HTML 渲染（REST/AJAX 重渲 the_content）不入队，避免无谓副作用
+        if (!self::is_frontend_html_render()) {
+            return $content;
+        }
+
         global $post;
         
         // 检查当前文章内容是否包含 travel_map 短代码
@@ -764,24 +793,30 @@ class TravelMapPlugin {
      * 渲染地图短代码
      */
     public function render_map_shortcode($atts) {
-        // 确保前端脚本已加载
-        $this->enqueue_frontend_scripts();
+        // 资源兜底输出仅限前台 HTML 渲染上下文：区块编辑器保存时核心会在
+        // REST 请求内重渲 the_content，此时 wp_head/wp_footer 不触发，
+        // 兜底 print 会把 <script>/<link> 抢在 JSON 响应之前写进响应流
+        if (self::is_frontend_html_render()) {
+            // 确保前端脚本已加载
+            $this->enqueue_frontend_scripts();
 
-        // 兜底输出样式，避免主题未正确调用 wp_head 导致样式缺失
-        if (!wp_style_is('travel-map-frontend', 'done')) {
-            wp_print_styles('travel-map-frontend');
-        }
-        
-        // 兜底输出脚本，避免主题未正确调用 wp_head/wp_footer 导致脚本缺失
-        if (!wp_script_is('travel-map-shortcode-init', 'done')) {
-            $handles = array();
-            if (!empty(get_option('travel_map_api_key', ''))) {
-                $handles[] = 'amap-api';
+            // 兜底输出样式，避免主题未正确调用 wp_head 导致样式缺失
+            if (!wp_style_is('travel-map-frontend', 'done')) {
+                wp_print_styles('travel-map-frontend');
             }
-            $handles[] = 'travel-map-frontend';
-            $handles[] = 'travel-map-shortcode-init';
-            wp_print_scripts($handles);
+
+            // 兜底输出脚本，避免主题未正确调用 wp_head/wp_footer 导致脚本缺失
+            if (!wp_script_is('travel-map-shortcode-init', 'done')) {
+                $handles = array();
+                if (!empty(get_option('travel_map_api_key', ''))) {
+                    $handles[] = 'amap-api';
+                }
+                $handles[] = 'travel-map-frontend';
+                $handles[] = 'travel-map-shortcode-init';
+                wp_print_scripts($handles);
+            }
         }
+
         $atts = shortcode_atts(array(
             'width' => '100%',
             'height' => '550px',
@@ -803,7 +838,9 @@ class TravelMapPlugin {
         $map_id = 'travel-map-' . uniqid();
         
         static $schema_added = false;
-        if (!$schema_added) {
+        // 仅前台渲染注册 wp_footer schema 输出：REST 重渲时 wp_footer 不会触发，
+        // 若在此处置位静态标记反而会吞掉后续前台请求的 schema 输出机会
+        if (!$schema_added && self::is_frontend_html_render()) {
             $schema_data = array(
                 '@context' => 'https://schema.org',
                 '@type' => 'Map',
@@ -2339,7 +2376,7 @@ if (!function_exists('travel_map_enqueue_assets')) {
     function travel_map_enqueue_assets() {
         TravelMapPlugin::get_instance()->enqueue_frontend_scripts();
         
-        if (did_action('wp_head') && !wp_style_is('travel-map-frontend', 'done')) {
+        if (TravelMapPlugin::is_frontend_html_render() && !wp_style_is('travel-map-frontend', 'done')) {
             wp_print_styles('travel-map-frontend');
         }
     }
