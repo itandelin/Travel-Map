@@ -535,7 +535,10 @@
                 // 单点聚合：不缩放，弹窗交给 renderSingleMarker 的 click
                 if (lnglats.length === 1) return;
 
-                this.fitToCoords(lnglats);
+                // 逐级展开：大留白（容器高×0.32）+ bbox 居中，保持原探索式手感
+                const cSize = this.map.getSize();
+                const cH = (cSize && cSize.height) || 550;
+                this.fitToCoords(lnglats, { padding: Math.round(cH * 0.32), centering: 'bbox' });
             });
 
             this.cluster.setData(this.currentFeatures.map(f => ({
@@ -940,54 +943,56 @@
             if (coords.length === 1) {
                 this.map.setZoomAndCenter(Math.max(this.map.getZoom(), 10), coords[0]);
             } else if (coords.length > 1) {
-                this.fitToCoords(coords);
+                this.fitToCoords(coords, { padding: this.overviewPadding(), centering: 'centroid' });
             }
         }
 
         /**
-         * 按给定坐标集合自适应视野（带内边距与缩放封顶）。
-         *
-         * 不用 setFitView(null)：null 表示"全部覆盖物"，会把十段线、
-         * 国家图层都卷进视野导致地图缩小；这里只针对目标点算 bounds，
-         * 再以缩放封顶 + 边距换算的方式落到 setBounds 上。
+         * 总览自适应的安全留白（像素）：桌面恒定 60；小屏（断点 768）按容器高
+         * 比例缩小且封顶 60，避免窄屏固定边距吃掉过多视野。
          */
-        fitToCoords(lnglats) {
-            if (!lnglats || !lnglats.length || !this.map) return;
-
-            let minLng = Infinity, minLat = Infinity, maxLng = -Infinity, maxLat = -Infinity;
-            for (const [lng, lat] of lnglats) {
-                if (lng < minLng) minLng = lng;
-                if (lat < minLat) minLat = lat;
-                if (lng > maxLng) maxLng = lng;
-                if (lat > maxLat) maxLat = lat;
+        overviewPadding() {
+            const size = this.map.getSize();
+            const h = (size && size.height) || 550;
+            if (isMobileViewport()) {
+                return Math.min(60, Math.round(h * 0.12));
             }
+            return 60;
+        }
 
-            // 全部点重合：以该点为中心放大一档
-            if (minLng === maxLng && minLat === maxLat) {
-                this.map.setZoomAndCenter(Math.min(this.map.getZoom() + 1, this.options.maxZoom), [minLng, minLat]);
+        /**
+         * 按给定坐标集合自适应视野：外接框定缩放（固定像素留白 + 缩放封顶一步到位），
+         * 质心（或 bbox）定中心。纯计算交给 TravelMapGeo.computeFitView，本方法只负责
+         * 取视口尺寸并落到地图上。
+         *
+         * 不用 setFitView(null)：null 表示"全部覆盖物"，会把十段线、国家图层都卷进
+         * 视野导致地图缩小；这里只针对目标点算范围。
+         */
+        fitToCoords(lnglats, opts) {
+            if (!lnglats || !lnglats.length || !this.map) return;
+            opts = opts || {};
+
+            const geo = window.TravelMapGeo;
+            if (!geo || typeof geo.computeFitView !== 'function') {
+                // 兜底：geo 脚本缺失时退回最小缩放定位首点，避免整图无响应
+                this.map.setZoomAndCenter(this.options.minZoom, lnglats[0]);
                 return;
             }
 
-            // 边距换算：把像素 padding 折成经纬度扩展（近似，足够用于视野留白）
             const size = this.map.getSize();
-            const w = (size && size.width) || 800;
-            const h = (size && size.height) || 550;
-            const padding = Math.round(Math.min(h, 550) * 0.12); // 与旧实现观感接近的留白
-            const lngSpan = Math.max(maxLng - minLng, 0.01);
-            const latSpan = Math.max(maxLat - minLat, 0.01);
-            const padLng = lngSpan * (padding / Math.min(w, h)) * 2;
-            const padLat = latSpan * (padding / Math.min(w, h)) * 2;
+            const viewW = (size && size.width) || 800;
+            const viewH = (size && size.height) || 550;
 
-            const bounds = new AMap.Bounds(
-                [minLng - padLng, minLat - padLat],
-                [maxLng + padLng, maxLat + padLat]
-            );
-            this.map.setBounds(bounds);
-
-            // setBounds 无 maxZoom 参数，超出封顶再压回
-            if (this.map.getZoom() > this.options.maxZoom) {
-                this.map.setZoom(this.options.maxZoom);
-            }
+            const r = geo.computeFitView(lnglats, {
+                padding: opts.padding,
+                centering: opts.centering,
+                minZoom: this.options.minZoom,
+                maxZoom: this.options.maxZoom,
+                viewW: viewW,
+                viewH: viewH
+            });
+            if (!r) return;
+            this.map.setZoomAndCenter(r.zoom, r.center);
         }
 
         backToOverview() {
