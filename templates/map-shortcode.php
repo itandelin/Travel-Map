@@ -19,7 +19,7 @@ $container_classes = 'travel-map-container' . ($show_filter_tabs ? '' : ' travel
 $auto_zoom_attr = $atts['auto_zoom'];
 ?>
 
-<div class="<?php echo esc_attr($container_classes); ?>" style="width: <?php echo esc_attr($atts['width']); ?>; --travel-map-height: <?php echo esc_attr($atts['height']); ?>;">
+<div class="<?php echo esc_attr($container_classes); ?>" style="width: <?php echo esc_attr($atts['width']); ?>; --travel-map-height: <?php echo esc_attr($atts['height']); ?>; --tm-h-desktop: <?php echo esc_attr($atts['height']); ?>; --tm-h-mobile-base: <?php echo esc_attr($mobile_height_base); ?>;<?php echo $mobile_height_override !== '' ? ' --tm-h-mobile-override: ' . esc_attr($mobile_height_override) . ';' : ''; ?>">
     
     <div class="travel-map-wrapper">
         <div class="travel-map-loading">

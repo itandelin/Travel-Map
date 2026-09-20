@@ -843,7 +843,7 @@ class TravelMapPlugin {
 
         $atts = shortcode_atts(array(
             'width' => '100%',
-            'height' => '550px',
+            'height' => intval(get_option('travel_map_desktop_height', 550)) . 'px',
             'zoom' => get_option('travel_map_default_zoom', 4),
             'center' => get_option('travel_map_default_center', '35.0,105.0'),
             'filter_tabs' => get_option('travel_map_show_filter_tabs', true),
@@ -852,7 +852,15 @@ class TravelMapPlugin {
             'status' => '',
             'filters' => 'all,done,wish,plan',
             'auto_zoom' => '',
+            'mobile_height' => '',
         ), $atts, 'travel_map');
+
+        // mobile_height 仅接受 <数字><单位> 形式（px/vh/svh/dvh），否则视为未传，防注入任意 CSS
+        $mobile_height_override = '';
+        if (preg_match('/^\d+(?:\.\d+)?(px|dvh|svh|vh)$/', trim($atts['mobile_height']))) {
+            $mobile_height_override = trim($atts['mobile_height']);
+        }
+        $mobile_height_base = max(40, min(95, intval(get_option('travel_map_mobile_height_percent', 75))));
         
         $api_key = get_option('travel_map_api_key', '');
         if (empty($api_key)) {
