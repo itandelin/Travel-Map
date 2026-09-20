@@ -426,6 +426,14 @@ class TravelMapPlugin {
             'type' => 'integer',
             'default' => 12
         ));
+        register_setting('travel_map_settings', 'travel_map_desktop_height', array(
+            'type' => 'integer',
+            'default' => 550
+        ));
+        register_setting('travel_map_settings', 'travel_map_mobile_height_percent', array(
+            'type' => 'integer',
+            'default' => 75
+        ));
     }
     
     /**
@@ -524,6 +532,8 @@ class TravelMapPlugin {
         update_option('travel_map_default_cover', esc_url_raw($_POST['default_cover'] ?? ''));
         update_option('travel_map_min_zoom', max(1, min(20, intval($_POST['min_zoom'] ?? 1))));
         update_option('travel_map_max_zoom', max(3, min(20, intval($_POST['max_zoom'] ?? 12))));
+        update_option('travel_map_desktop_height', max(200, min(2000, intval($_POST['desktop_height'] ?? 550))));
+        update_option('travel_map_mobile_height_percent', max(40, min(95, intval($_POST['mobile_height_percent'] ?? 75))));
         
         add_action('admin_notices', function() {
             echo '<div class="notice notice-success is-dismissible"><p>' . __('设置已保存', TRAVEL_MAP_TEXT_DOMAIN) . '</p></div>';

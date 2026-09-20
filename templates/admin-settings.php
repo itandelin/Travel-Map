@@ -108,6 +108,40 @@ if (!defined('ABSPATH')) {
                     <?php _e('格式：纬度,经度。默认为中国地理中心。注意：地图会优先自适应到当前筛选下的全部标记，此处的中心与缩放仅在所选筛选无任何标记时作为兜底视图。', TRAVEL_MAP_TEXT_DOMAIN); ?>
                 </p>
             </div>
+
+            <div class="travel-map-form-row">
+                <label for="desktop_height" class="travel-map-form-label">
+                    <?php _e('桌面端地图高度 (px)', TRAVEL_MAP_TEXT_DOMAIN); ?>
+                </label>
+                <input
+                    type="number"
+                    id="desktop_height"
+                    name="desktop_height"
+                    value="<?php echo esc_attr(get_option('travel_map_desktop_height', 550)); ?>"
+                    class="travel-map-form-input"
+                    min="200" max="2000" step="10"
+                >
+                <p class="travel-map-form-help">
+                    <?php _e('宽度 >768px 时的地图高度，单位像素，取值 200–2000，默认 550。短代码显式 height 属性可覆盖本页设置。', TRAVEL_MAP_TEXT_DOMAIN); ?>
+                </p>
+            </div>
+
+            <div class="travel-map-form-row">
+                <label for="mobile_height_percent" class="travel-map-form-label">
+                    <?php _e('移动端地图高度 (视口百分比)', TRAVEL_MAP_TEXT_DOMAIN); ?>
+                </label>
+                <input
+                    type="number"
+                    id="mobile_height_percent"
+                    name="mobile_height_percent"
+                    value="<?php echo esc_attr(get_option('travel_map_mobile_height_percent', 75)); ?>"
+                    class="travel-map-form-input"
+                    min="40" max="95" step="1"
+                >
+                <p class="travel-map-form-help">
+                    <?php _e('宽度 ≤768px 时地图占可视窗口高度的百分比，取值 40–95，默认 75。实际高度会被限制在 340–720px 之间，并随浏览器地址栏伸缩自适应。', TRAVEL_MAP_TEXT_DOMAIN); ?>
+                </p>
+            </div>
         </div>
 
         <!-- 功能选项 -->
