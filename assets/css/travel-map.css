@@ -15,19 +15,23 @@
 
 /* ============ 容器骨架 ============ */
 .travel-map-container {
+    --tm-h-desktop: 550px;            /* 后台 travel_map_desktop_height，Task 2 内联覆盖 */
+    --tm-h-mobile-base: 75;           /* 后台 travel_map_mobile_height_percent（无单位数字） */
+    --tm-h-mobile-override: initial;  /* 短代码 mobile_height 显式传值时覆盖 */
     width: 100%;
-    height: var(--travel-map-height, 550px);
+    height: var(--travel-map-height, var(--tm-h-desktop, 550px));
     position: relative;
     overflow: hidden;
     border-radius: 10px;
     margin-bottom: 20px;
+    transition: height 0.25s ease-out;
 }
 
 .travel-map-wrapper,
 .travel-map {
     width: 100%;
     height: 100%;
-    min-height: 400px;
+    min-height: 0;
 }
 
 /* 加载态：数据 + 图层就绪后由 JS 加 is-loaded 淡出 */
@@ -837,25 +841,27 @@ html.dark .travel-map-filter-tab.active {
     color: #999;
 }
 
-/* ============ 响应式 ============ */
+/* ============ 响应式高度 ============ */
 @media (max-width: 768px) {
     .travel-map-container {
-        height: auto;
-        aspect-ratio: 1 / 1.3;
-        min-height: 400px;
+        /* 降级链：无法解析的整条声明被丢弃，合法浏览器取最后可解析者。
+           短代码 mobile_height 显式传值时 --tm-h-mobile-override 优先。 */
+        height: var(--tm-h-mobile-override,
+            clamp(340px, calc(var(--tm-h-mobile-base) * 1vh), 720px));
+        height: var(--tm-h-mobile-override,
+            clamp(340px, calc(var(--tm-h-mobile-base) * 1svh), 720px));
+        height: var(--tm-h-mobile-override,
+            clamp(340px, calc(var(--tm-h-mobile-base) * 1dvh), 720px));
     }
 }
 
-@media (max-width: 480px) {
-    .travel-map-container {
-        aspect-ratio: 1 / 1.5;
-        min-height: 350px;
-    }
-
-    .travel-map-wrapper,
-    .travel-map {
-        min-height: 350px;
-    }
+/* 全屏：占满动态视口，退出后由 ResizeObserver 链路恢复配置高度 */
+.travel-map-container:fullscreen,
+.travel-map-container:-webkit-full-screen {
+    height: 100dvh;
+    max-height: none;
+    border-radius: 0;
+    margin-bottom: 0;
 }
 
 /**
