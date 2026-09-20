@@ -120,7 +120,9 @@ class TravelMapMigrator {
     }
 
     /**
-     * 1.1.0 新设置项默认值
+     * 新设置项默认值（1.1.0 起，含后续新增项）
+     *
+     * 同时作为安装时播种与卸载时清理的键清单，新增设置项必须登记在此。
      */
     public static function default_settings() {
         return array(
@@ -129,6 +131,7 @@ class TravelMapMigrator {
             'travel_map_auto_zoom'          => 1,
             'travel_map_highlight_country'  => 1,
             'travel_map_show_yearly_stats'  => 1,
+            'travel_map_hide_yearly_stats_mobile' => 0,
             'travel_map_show_type_stats'    => 1,
             'travel_map_default_filter_status' => 'all',
             'travel_map_default_cover'      => '',

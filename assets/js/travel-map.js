@@ -116,6 +116,7 @@
                 autoZoom: s.autoZoom !== false,
                 highlightCountry: s.highlightCountry !== false,
                 showYearlyStats: s.showYearlyStats !== false,
+                hideYearlyMobile: s.hideYearlyMobile === true,
                 showTypeStats: s.showTypeStats !== false,
                 defaultFilterStatus: s.defaultFilterStatus || 'all',
                 minZoom: s.minZoom || 1,
@@ -1172,15 +1173,32 @@
             const wrapper = this.mapContainer.querySelector('.travel-map-wrapper');
             if (!wrapper) return;
 
+            // 后台「移动模式下隐藏年度统计面板」开关：只打一个类，隐藏交给 CSS 的
+            // max-width:768px 规则处理。用类而不是 JS 判断视口宽度决定是否创建面板，
+            // 是为了让旋转屏幕 / 拖动窗口宽度时可即时切换，无需重建面板。
+            if (this.options.hideYearlyMobile && this.mapContainer) {
+                this.mapContainer.classList.add('travel-map-hide-year-mobile');
+            }
+
+            // 两个面板放进同一条绝对定位的 flex 底部条：宽屏时 space-between
+            // 分列两端，窄屏由 CSS 改成纵向列且靠右堆叠，从根源上消除左右面板
+            // 重叠，无需再按视口宽度手工摆放各自坐标。
+            let bar = wrapper.querySelector('.travel-map-bottom-bar');
+            if (!bar) {
+                bar = document.createElement('div');
+                bar.className = 'travel-map-bottom-bar';
+                wrapper.appendChild(bar);
+            }
+
             if (this.options.showTypeStats && !this.statsEl) {
                 this.statsEl = document.createElement('div');
                 this.statsEl.className = 'travel-map-stats-panel';
-                wrapper.appendChild(this.statsEl);
+                bar.appendChild(this.statsEl);
             }
             if (this.options.showYearlyStats && !this.yearStatsEl) {
                 this.yearStatsEl = document.createElement('div');
                 this.yearStatsEl.className = 'travel-map-year-panel';
-                wrapper.appendChild(this.yearStatsEl);
+                bar.appendChild(this.yearStatsEl);
             }
         }
 

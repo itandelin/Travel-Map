@@ -406,6 +406,11 @@ class TravelMapPlugin {
             'type' => 'boolean',
             'default' => true
         ));
+        // 默认关闭：移动端仍显示年份面板（堆叠方案已解决重叠），需要时再手动开启
+        register_setting('travel_map_settings', 'travel_map_hide_yearly_stats_mobile', array(
+            'type' => 'boolean',
+            'default' => false
+        ));
         register_setting('travel_map_settings', 'travel_map_show_type_stats', array(
             'type' => 'boolean',
             'default' => true
@@ -523,6 +528,7 @@ class TravelMapPlugin {
         update_option('travel_map_auto_zoom', isset($_POST['auto_zoom']));
         update_option('travel_map_highlight_country', isset($_POST['highlight_country']));
         update_option('travel_map_show_yearly_stats', isset($_POST['show_yearly_stats']));
+        update_option('travel_map_hide_yearly_stats_mobile', isset($_POST['hide_yearly_stats_mobile']));
         update_option('travel_map_show_type_stats', isset($_POST['show_type_stats']));
         // 'all' 是合法取值：它表示 done/wish/plan 的并集（前端「全部」页签），
         // 不是单个状态值，所以不能用 is_valid_status() 校验。
@@ -614,7 +620,7 @@ class TravelMapPlugin {
         );
 
         // 关键样式兜底，避免主题未加载 head 时样式缺失（与 travel-map.css / shortcode-init.js 三处同步）
-        $critical_css = '.travel-map-container{--tm-h-desktop:550px;--tm-h-mobile-base:75;--tm-h-mobile-override:initial;width:100%;height:var(--travel-map-height,var(--tm-h-desktop,550px));position:relative;overflow:hidden;background:#f5f5f5;border-radius:10px;margin-bottom:20px;transition:height .25s ease-out}.travel-map-wrapper,.travel-map{width:100%;height:100%;min-height:0}@media (max-width:768px){.travel-map-container{height:var(--tm-h-mobile-override,clamp(340px,calc(var(--tm-h-mobile-base)*1vh),720px));height:var(--tm-h-mobile-override,clamp(340px,calc(var(--tm-h-mobile-base)*1svh),720px));height:var(--tm-h-mobile-override,clamp(340px,calc(var(--tm-h-mobile-base)*1dvh),720px))}}.travel-map-loading{position:absolute;top:0;right:0;bottom:0;left:0;display:flex;align-items:center;justify-content:center;flex-direction:column;background:#f5f5f5;z-index:1000}.travel-map-controls{position:absolute;top:10px;right:10px;z-index:1000;display:flex;flex-direction:column;gap:8px}.travel-map-control-btn{width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:#fff;border:0;border-radius:6px;padding:0;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.05)}.travel-map-control-btn svg{width:18px;height:18px;display:block;color:#333}.travel-map-embedded-filters{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:10;background:#fff;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.05);padding:7px 9px;display:flex;gap:8px;max-width:calc(100% - 20px);flex-wrap:wrap;justify-content:center}.travel-map-filter-tab{border:0;font-size:12px !important;background-color:#f9f9f9;color:#555;padding:5px 12px;border-radius:10px;cursor:pointer;line-height:1.5}.travel-map-filter-tab[data-status="all"]{background-color:rgba(220,38,38,.12);color:#b91c1c}.travel-map-filter-tab[data-status="done"]{background-color:rgba(192,88,12,.12);color:#c0580c}.travel-map-filter-tab[data-status="wish"]{background-color:rgba(202,138,4,.14);color:#a16207}.travel-map-filter-tab[data-status="plan"]{background-color:rgba(5,150,105,.12);color:#047857}.travel-map-filter-tab[data-status="all"].active{background-color:#dc2626;color:#fff}.travel-map-filter-tab[data-status="done"].active{background-color:#c0580c;color:#fff}.travel-map-filter-tab[data-status="wish"].active{background-color:#ca8a04;color:#fff}.travel-map-filter-tab[data-status="plan"].active{background-color:#059669;color:#fff}.travel-map-filter-tab.active{cursor:not-allowed}.travel-map-accessibility{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}';
+        $critical_css = '.travel-map-container{--tm-h-desktop:550px;--tm-h-mobile-base:75;--tm-h-mobile-override:initial;width:100%;height:var(--travel-map-height,var(--tm-h-desktop,550px));position:relative;overflow:hidden;background:#f5f5f5;border-radius:10px;margin-bottom:20px;transition:height .25s ease-out}.travel-map-wrapper,.travel-map{width:100%;height:100%;min-height:0}@media (max-width:768px){.travel-map-container{height:var(--tm-h-mobile-override,clamp(340px,calc(var(--tm-h-mobile-base)*1vh),720px));height:var(--tm-h-mobile-override,clamp(340px,calc(var(--tm-h-mobile-base)*1svh),720px));height:var(--tm-h-mobile-override,clamp(340px,calc(var(--tm-h-mobile-base)*1dvh),720px))}}.travel-map-loading{position:absolute;top:0;right:0;bottom:0;left:0;display:flex;align-items:center;justify-content:center;flex-direction:column;background:#f5f5f5;z-index:1000}.travel-map-controls{position:absolute;top:10px;right:10px;z-index:1000;display:flex;flex-direction:column;gap:8px}.travel-map-control-btn{width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:#fff;border:0;border-radius:6px;padding:0;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.05)}.travel-map-control-btn svg{width:18px;height:18px;display:block;color:#333}.travel-map-embedded-filters{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:10;background:#fff;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.05);padding:7px 9px;display:flex;gap:8px;max-width:calc(100% - 20px);flex-wrap:nowrap;justify-content:center}.travel-map-filter-tab{border:0;font-size:12px !important;background-color:#f9f9f9;color:#555;padding:5px 12px;border-radius:10px;cursor:pointer;line-height:1.5}.travel-map-filter-tab[data-status="all"]{background-color:rgba(220,38,38,.12);color:#b91c1c}.travel-map-filter-tab[data-status="done"]{background-color:rgba(192,88,12,.12);color:#c0580c}.travel-map-filter-tab[data-status="wish"]{background-color:rgba(202,138,4,.14);color:#a16207}.travel-map-filter-tab[data-status="plan"]{background-color:rgba(5,150,105,.12);color:#047857}.travel-map-filter-tab[data-status="all"].active{background-color:#dc2626;color:#fff}.travel-map-filter-tab[data-status="done"].active{background-color:#c0580c;color:#fff}.travel-map-filter-tab[data-status="wish"].active{background-color:#ca8a04;color:#fff}.travel-map-filter-tab[data-status="plan"].active{background-color:#059669;color:#fff}.travel-map-filter-tab.active{cursor:not-allowed}.travel-map-accessibility{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}';
         wp_add_inline_style('travel-map-frontend', $critical_css);
         
         // 本地化脚本
@@ -631,6 +637,7 @@ class TravelMapPlugin {
                 'autoZoom' => (bool) get_option('travel_map_auto_zoom', true),
                 'highlightCountry' => (bool) get_option('travel_map_highlight_country', true),
                 'showYearlyStats' => (bool) get_option('travel_map_show_yearly_stats', true),
+                'hideYearlyMobile' => (bool) get_option('travel_map_hide_yearly_stats_mobile', false),
                 'showTypeStats' => (bool) get_option('travel_map_show_type_stats', true),
                 'defaultFilterStatus' => get_option('travel_map_default_filter_status', 'all'),
                 'minZoom' => (int) get_option('travel_map_min_zoom', 1),

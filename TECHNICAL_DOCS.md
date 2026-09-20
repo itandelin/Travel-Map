@@ -152,6 +152,7 @@ CREATE TABLE {prefix}travel_map_post_markers (
 | `travel_map_auto_zoom` | `true` | 初始自动缩放到全部标记 |
 | `travel_map_highlight_country` | `true` | 已去国家高亮 |
 | `travel_map_show_yearly_stats` | `true` | 年度统计面板 |
+| `travel_map_hide_yearly_stats_mobile` | `false` | 窄屏（≤768px）下隐藏年度统计面板 |
 | `travel_map_show_type_stats` | `true` | 分类统计 |
 | `travel_map_default_filter_status` | `'all'` | 前台默认筛选状态，取值 `all`/`done`/`wish`/`plan` |
 | `travel_map_default_cover` | `''` | 默认封面图 URL |
@@ -162,7 +163,7 @@ CREATE TABLE {prefix}travel_map_post_markers (
 
 设置页用的是自己的 `save_settings()`（`travel-map.php:467-501`，校验 `travel_map_settings` nonce 后逐个 `update_option`，数值项做 min/max 夹取），`register_setting()` 的注册主要用于声明类型与默认值，并未走 Settings API 的表单流程。
 
-`uninstall()`（`travel-map.php:1565-1585`）删除 `api_key`、`security_key`、`default_zoom`、`default_center`、`show_filter_tabs`、`travel_map_db_version` 与 `TravelMapMigrator::default_settings()` 的全部 10 个键，并兼容清理三个旧颜色 option，最后 DROP 两张表。**仍然遗漏** transient：没有任何 `delete_transient()` 调用，`travel_map_markers_*` 与 `travel_map_markers_geojson` 会留在 options 表里直到自然过期。
+`uninstall()`（`travel-map.php:1565-1585`）删除 `api_key`、`security_key`、`default_zoom`、`default_center`、`show_filter_tabs`、`travel_map_db_version` 与 `TravelMapMigrator::default_settings()` 的全部 11 个键，并兼容清理三个旧颜色 option，最后 DROP 两张表。**仍然遗漏** transient：没有任何 `delete_transient()` 调用，`travel_map_markers_*` 与 `travel_map_markers_geojson` 会留在 options 表里直到自然过期。
 
 ## 短代码
 

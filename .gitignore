@@ -92,3 +92,5 @@ uploads/
 docs/
 .mimosa/
 .playwright-mcp/
+.superpowers/
+.gitignore

@@ -179,6 +179,16 @@ if (!defined('ABSPATH')) {
                     <span><?php _e('显示年度统计面板', TRAVEL_MAP_TEXT_DOMAIN); ?></span>
                 </label>
             </div>
+
+            <div class="travel-map-form-row">
+                <label class="travel-map-form-checkbox">
+                    <input type="checkbox" name="hide_yearly_stats_mobile" value="1" <?php checked(get_option('travel_map_hide_yearly_stats_mobile', false)); ?>>
+                    <span><?php _e('移动模式下隐藏年度统计面板', TRAVEL_MAP_TEXT_DOMAIN); ?></span>
+                </label>
+                <p class="travel-map-form-help">
+                    <?php _e('仅在窄屏（≤768px）隐藏左下角年度统计，桌面端不受影响；需先开启「显示年度统计面板」', TRAVEL_MAP_TEXT_DOMAIN); ?>
+                </p>
+            </div>
             
             <div class="travel-map-form-row">
                 <label class="travel-map-form-checkbox">

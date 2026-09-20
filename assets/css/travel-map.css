@@ -516,7 +516,8 @@ html.dark .travel-map-year-chip {
     display: flex;
     gap: 8px;
     max-width: calc(100% - 20px);
-    flex-wrap: wrap;
+    /* 移动端/窄屏也保持一行显示，不换行：靠下方 @media 收缩间距与内边距挤进一行 */
+    flex-wrap: nowrap;
     justify-content: center;
 }
 
@@ -533,6 +534,22 @@ html.dark .travel-map-year-chip {
     cursor: pointer;
     line-height: 1.5;
     transition: background-color 0.18s ease, color 0.18s ease;
+}
+
+/* 窄屏/移动端：收缩按钮内边距与间距，保证四个页签挤进一行不换行、也不溢出屏幕。
+   选择器多带一层 .travel-map-container 提升优先级，以盖过内联关键样式里的单类名基础值。 */
+@media (max-width: 480px) {
+    .travel-map-container .travel-map-embedded-filters {
+        gap: 5px;
+        padding: 6px 6px;
+    }
+
+    .travel-map-container .travel-map-filter-tab {
+        padding: 5px 8px;
+        flex: 0 1 auto;
+        min-width: 0;
+        white-space: nowrap;
+    }
 }
 
 /**
@@ -620,11 +637,28 @@ html.dark .travel-map-filter-tab.active {
 }
 
 /* ============ 统计面板 ============ */
+/* 底部条：横贯地图下缘的 flex 容器，宽屏时年份面板居左、类型统计居右
+   （space-between 分列两端），替代旧「两面板各自 absolute 定位」在窄屏下
+   相互重叠的问题。窄屏改为纵向列 + 右对齐（见下方 768px 媒体查询）。
+   条本体 pointer-events:none，空白区域不挡地图。 */
+.travel-map-bottom-bar {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 8px 10px;
+    padding: 0 10px;
+    pointer-events: none;
+    z-index: 3;
+}
+
 .travel-map-stats-panel,
 .travel-map-year-panel {
-    position: absolute;
-    right: 10px;
-    bottom: 10px;
+    position: static;
     background: rgba(0, 0, 0, 0.65);
     color: #fff;
     font-size: 12px;
@@ -635,19 +669,25 @@ html.dark .travel-map-filter-tab.active {
     gap: 10px;
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
-    z-index: 3;
+    pointer-events: auto;
 }
 
 .travel-map-year-panel {
-    left: 10px;
-    right: auto;
-    /* 内容盒 = max-width − 左右内距(2×10px)。原值 150px 时内容盒仅 130px，
-       恰好卡在「两个年份 chip 能否并排」的临界：贪心 flex-wrap 下，宽度相近的
-       chip 对会因亚像素取整一对挤进首行、另一对被拆到不同行，导致 4 个年份渲染成
-       3 行。放宽到 180px（内容盒 160px）为双列留出稳定余量，即便计数/国家数进位到
-       两位也能保持每行 2 个 chip。gap 仍走共享规则，不影响右下类型统计面板。 */
-    max-width: 180px;
-    flex-wrap: wrap;
+    order: -1;
+    /* 宽度自适应：固定 max-width 会在年份 chip 较窄时于右侧留下大片空白，
+       所以改用两列 grid——列宽取各列内容的 max-content，面板宽度自然收缩到
+       「刚好放下每行 2 个 chip」。minmax(0, max-content) 保证底部条空间不足时
+       列还能被压缩，不会撑破地图边界。 */
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, max-content));
+    justify-content: start;
+}
+
+/* 只有一条年份（或「无数据」占位）时，空的第二列仍会占掉一个 column-gap，
+   右侧多出 10px 空白，这里收成单列。老浏览器不支持 :has() 会整条忽略，
+   仅退化为多 10px 间距，不影响布局。 */
+.travel-map-year-panel:has(> .y-item:only-child) {
+    grid-template-columns: minmax(0, max-content);
 }
 
 .travel-map-year-panel span {
@@ -889,10 +929,44 @@ html.dark .travel-map-filter-tab.active {
         padding: 5px 7px;
     }
 
+    .travel-map-bottom-bar {
+        bottom: 6px;
+        padding: 0 6px;
+    }
+
     .travel-map-stats-panel,
     .travel-map-year-panel {
-        bottom: 6px;
         padding: 5px 8px;
+    }
+}
+
+/**
+ * 窄屏（手机）：两个面板改为纵向堆叠且整体靠右。
+ *
+ * 不能只靠 flex-wrap 自动换行：space-between 对「只剩一个项目的行」会把
+ * 项目推到行首（左），换行后两个面板都跑到左边，隐藏年份面板后状态统计也在左，
+ * 与「统计常驻右下」的直觉相背。这里直接换成 column + align-items:flex-end，
+ * 堆叠顺序仍是年份在上、状态统计贴底，隐藏年份面板后状态统计原地不动。
+ * 同时限高年份面板内部滚动，避免年份条目过多时纵向长满遮挡地图。
+ */
+@media (max-width: 768px) {
+    .travel-map-bottom-bar {
+        flex-direction: column;
+        flex-wrap: nowrap;
+        align-items: flex-end;
+        justify-content: flex-end;
+    }
+
+    .travel-map-year-panel {
+        max-height: 38dvh;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    /* 后台开关：移动模式下整体隐藏左下角年度统计（类由 JS 按设置项打到容器上）。
+       display:none 同时移出 flex 流，右下统计面板原地独占底部。 */
+    .travel-map-container.travel-map-hide-year-mobile .travel-map-year-panel {
+        display: none;
     }
 }
 
