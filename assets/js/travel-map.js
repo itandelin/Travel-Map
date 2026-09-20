@@ -129,6 +129,7 @@
             this._overviewMode = true;
             this._heightDirty = false;
             this._lastMapHeight = 0;
+            this._fitTs = 0;
 
             this.map = null;
             this.cluster = null;
@@ -955,8 +956,18 @@
             if (this.currentFeatures && this.currentFeatures.length) {
                 this.fitToMarkers();
             } else {
-                this.map.setZoomAndCenter(this.options.zoom, this.options.center);
+                this._programmaticZoom(this.options.zoom, this.options.center);
             }
+        }
+
+        /**
+         * 程序化视野变更统一入口：记录时间戳，供 zoomstart 处理器区分
+         * “拟合自身触发的缩放”与“用户手动缩放”。所有非用户手势的
+         * setZoomAndCenter 都经此方法，避免误将 _overviewMode 打回 false。
+         */
+        _programmaticZoom(zoom, center) {
+            this._fitTs = Date.now();
+            this.map.setZoomAndCenter(zoom, center);
         }
 
         fitToMarkers() {
@@ -965,14 +976,14 @@
                 .filter(c => Array.isArray(c) && c.length === 2);
 
             if (coords.length === 1) {
-                this.map.setZoomAndCenter(Math.max(this.map.getZoom(), 10), coords[0]);
+                this._programmaticZoom(Math.max(this.map.getZoom(), 10), coords[0]);
             } else if (coords.length > 1) {
                 // 全部点重合（重复录入/同城多点）：退化框交给质心会直冲 maxZoom，
                 // 这里与单点统一处理，保持"放大到就近一档"的观感。
                 const first = coords[0];
                 const allSame = coords.every(c => c[0] === first[0] && c[1] === first[1]);
                 if (allSame) {
-                    this.map.setZoomAndCenter(Math.max(this.map.getZoom(), 10), first);
+                    this._programmaticZoom(Math.max(this.map.getZoom(), 10), first);
                 } else {
                     // 总览/筛选：贴合后再多退一档，确保边缘标记不被裁到视口外
                     this.fitToCoords(coords, { padding: this.overviewPadding(), centering: 'centroid', zoomOut: 1 });
@@ -1018,7 +1029,7 @@
             const geo = window.TravelMapGeo;
             if (!geo || typeof geo.computeFitView !== 'function') {
                 // 兜底：geo 脚本缺失时退回最小缩放定位首点，避免整图无响应
-                this.map.setZoomAndCenter(this.options.minZoom, lnglats[0]);
+                this._programmaticZoom(this.options.minZoom, lnglats[0]);
                 return;
             }
 
@@ -1044,7 +1055,7 @@
             const zoom = zoomOut > 0
                 ? Math.max(this.options.minZoom, r.zoom - zoomOut)
                 : r.zoom;
-            this.map.setZoomAndCenter(zoom, r.center);
+            this._programmaticZoom(zoom, r.center);
         }
 
         backToOverview() {
@@ -1253,6 +1264,12 @@
 
             // 用户手动拖拽地图即离开总览态（此后尺寸变化不再自动重拟合，直到回到总览）
             this.map.on('dragstart', () => { this._overviewMode = false; });
+
+            // 用户手动缩放（滚轮/双指/缩放按钮）同样离开总览态；程序化拟合自身
+            // 触发的 zoom 在拟合时间窗内忽略，避免把刚置位的 _overviewMode 打回。
+            this.map.on('zoomstart', () => {
+                if (Date.now() - (this._fitTs || 0) > 700) this._overviewMode = false;
+            });
 
             this.bindOrientationChange();
         }
