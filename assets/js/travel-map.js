@@ -125,6 +125,11 @@
                 restUrl: ajaxConfig.restUrl || ''
             }, options);
 
+            // 响应式高度/视野状态标志（Task4）
+            this._overviewMode = true;
+            this._heightDirty = false;
+            this._lastMapHeight = 0;
+
             this.map = null;
             this.cluster = null;
             this.infoWindow = null;
@@ -528,8 +533,8 @@
                 if (lnglats.length === 1) return;
 
                 // 逐级展开：大留白（容器高×0.32）+ bbox 居中，保持原探索式手感
-                const cSize = this.map.getSize();
-                const cH = (cSize && cSize.height) || 550;
+                const cH = this.currentMapHeight();
+                this._overviewMode = false;
                 this.fitToCoords(lnglats, { padding: Math.round(cH * 0.32), centering: 'bbox' });
             });
 
@@ -573,6 +578,7 @@
             context.marker.setAnchor('center');
             context.marker.setOffset(new AMap.Pixel(0, 0));
             context.marker.on('click', () => {
+                this._overviewMode = false;
                 this.openMarkerPopup(feature);
             });
         }
@@ -972,6 +978,17 @@
                     this.fitToCoords(coords, { padding: this.overviewPadding(), centering: 'centroid', zoomOut: 1 });
                 }
             }
+
+            this._overviewMode = true;
+        }
+
+        /**
+         * 容器实际像素高（响应式高度下随视口/配置变化），取不到时回退 550。
+         */
+        currentMapHeight() {
+            const el = this.mapContainer || this.container;
+            const h = el ? el.getBoundingClientRect().height : 0;
+            return h > 0 ? h : 550;
         }
 
         /**
@@ -979,8 +996,7 @@
          * 比例缩小且封顶 60，避免窄屏固定边距吃掉过多视野。
          */
         overviewPadding() {
-            const size = this.map.getSize();
-            const h = (size && size.height) || 550;
+            const h = this.currentMapHeight();
             if (isMobileViewport()) {
                 return Math.min(60, Math.round(h * 0.12));
             }
@@ -1006,9 +1022,10 @@
                 return;
             }
 
-            const size = this.map.getSize();
-            const viewW = (size && size.width) || 800;
-            const viewH = (size && size.height) || 550;
+            const el = this.mapContainer || this.container;
+            const rect = el ? el.getBoundingClientRect() : null;
+            const viewW = (rect && rect.width > 0) ? rect.width : 800;
+            const viewH = (rect && rect.height > 0) ? rect.height : 550;
 
             const r = geo.computeFitView(lnglats, {
                 padding: opts.padding,
@@ -1234,7 +1251,22 @@
                 }
             });
 
+            // 用户手动拖拽地图即离开总览态（此后尺寸变化不再自动重拟合，直到回到总览）
+            this.map.on('dragstart', () => { this._overviewMode = false; });
+
             this.bindOrientationChange();
+        }
+
+        /**
+         * 高度真变化后的处理：refit=true（旋转/全屏等离散源）且处于总览/筛选态时
+         * 重拟合一次；否则只消费 dirty 标志不重拟合（普通 resize / 地址栏伸缩）。
+         */
+        handleHeightChange(refit) {
+            if (!this._heightDirty) return;
+            this._heightDirty = false;
+            if (refit && this._overviewMode && this.options.autoZoom) {
+                this.fitToMarkers();
+            }
         }
 
         bindOrientationChange() {
@@ -1250,6 +1282,9 @@
                             this.map.setZoom(this.options.zoom);
                         }
                     }
+                    // 旋转（adjustZoom=true）为离散高度变化源，允许重拟合；
+                    // 普通 resize（含 iOS 地址栏伸缩）只消费 dirty 不重拟合。
+                    this.handleHeightChange(adjustZoom);
                 }, 200);
             };
 
@@ -1383,7 +1418,11 @@
                     const active = document.fullscreenElement || document.webkitFullscreenElement;
                     btn.setAttribute('aria-pressed', active === this.container ? 'true' : 'false');
                     if (this.map) {
-                        window.setTimeout(() => this.refreshMapSize(), 100);
+                        window.setTimeout(() => {
+                            this.refreshMapSize();
+                            // 全屏进出是离散高度变化源，允许重拟合
+                            this.handleHeightChange(true);
+                        }, 100);
                     }
                 };
                 document.addEventListener('fullscreenchange', this._fullscreenChangeHandler);
@@ -1450,6 +1489,13 @@
         refreshMapSize() {
             // 容器宽度与地图就绪无关，先同步弹窗宽度上限
             this.syncPopupMaxWidth();
+            const h = this.currentMapHeight();
+            if (!this._lastMapHeight) {
+                this._lastMapHeight = h;
+            } else if (Math.abs(h - this._lastMapHeight) > 2) {
+                this._heightDirty = true;
+                this._lastMapHeight = h;
+            }
             if (!this.map || !this._mapReady) return;
             try {
                 this.map.getSize();
